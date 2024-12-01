@@ -1,2 +1,3 @@
 # Aieseci
-This is the offical website of AIESECI Anpara.
+This is the official website of AIESECI Anpara.
+Author - Parth Shrivastava
