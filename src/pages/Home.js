@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
-import "aos/dist/aos.css"; // Import AOS styles
+import "aos/dist/aos.css";
 import image1 from "../assets/Images/image1.jpg";
 import image2 from "../assets/Images/image2.jpg";
 import image3 from "../assets/Images/image3.jpg";
@@ -53,8 +53,12 @@ const Home = () => {
         <ul className="text-white text-2xl space-y-6">
           <li className="hover:text-blue-400 transition duration-300">Home</li>
           <li className="hover:text-blue-400 transition duration-300">About</li>
-          <li className="hover:text-blue-400 transition duration-300">Courses</li>
-          <li className="hover:text-blue-400 transition duration-300">Contact</li>
+          <li className="hover:text-blue-400 transition duration-300">
+            Courses
+          </li>
+          <li className="hover:text-blue-400 transition duration-300">
+            Contact
+          </li>
         </ul>
       </div>
 
@@ -74,11 +78,11 @@ const Home = () => {
               index % 2 === 0 ? "animate-up" : "animate-down"
             }`}
             data-aos="fade-up"
-            data-aos-delay={index * 300} // Staggered animation
+            data-aos-delay={index * 300}
           >
             <img
               src={image}
-              alt={`Image ${index + 1}`}
+              alt={`Timeline ${index + 1}`}
               className="w-full h-48 sm:h-56 md:h-64 object-cover rounded-lg transform transition-transform duration-500 hover:scale-110"
             />
           </div>

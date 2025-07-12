@@ -6,9 +6,9 @@ import papa from "../assets/Images/papa.jpg";
 const About = () => {
   useEffect(() => {
     AOS.init({
-      duration: 1000, 
-      easing: "ease-out-cubic", 
-      once: true, 
+      duration: 1000,
+      easing: "ease-out-cubic",
+      once: true,
     });
   }, []);
 
@@ -22,8 +22,9 @@ const About = () => {
         <div className="relative inline-block rounded-xl p-8 bg-gray-900 glow-card text-sky-200 border-2 border-sky-200 shadow-[0_0_2px_#fff,inset_0_0_2px_#fff,0_0_5px_#08f,0_0_15px_#08f,0_0_30px_#08f] transition-transform duration-300 hover:scale-105">
           <h1 className="text-4xl md:text-5xl font-bold">About AIESECI</h1>
           <p className="mt-4 text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-            Empowering students with the best computer education in Sonbhadra, AISECI blends
-            practical and theoretical learning to shape the future of the digital world.
+            Empowering students with the best computer education in Sonbhadra,
+            AISECI blends practical and theoretical learning to shape the future
+            of the digital world.
           </p>
         </div>
       </section>
@@ -99,7 +100,7 @@ const About = () => {
           >
             <img
               src={papa}
-              alt="Timeline Image 1"
+              alt="Timeline 1"
               className="w-64 h-64 rounded-lg shadow-lg glow-card transition-transform duration-300 hover:scale-110"
             />
           </div>
@@ -134,10 +135,12 @@ const About = () => {
         data-aos="fade-up"
       >
         <div className="relative inline-block rounded-xl p-8 bg-gray-900 text-sky-200 border-2 border-yellow-400 shadow-[0_0_2px_#fff,inset_0_0_2px_#fff,0_0_5px_#08f,0_0_15px_#08f,0_0_30px_#08f] transition-transform duration-300 hover:scale-105">
-          <h2 className="text-3xl md:text-4xl font-semibold">Join AIESECI Today</h2>
+          <h2 className="text-3xl md:text-4xl font-semibold">
+            Join AIESECI Today
+          </h2>
           <p className="text-gray-300 mt-4">
-            Start your journey towards a successful career in the digital world. Explore our
-            wide range of courses and enroll now.
+            Start your journey towards a successful career in the digital world.
+            Explore our wide range of courses and enroll now.
           </p>
         </div>
       </section>
