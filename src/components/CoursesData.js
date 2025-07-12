@@ -39,7 +39,7 @@ Semester II:
   {
     title: "CCC",
     short: "A basic computer literacy course for everyone.",
-    full: `🔹 CCC (Course on Computer Concepts)
+    full: `🔹 CCC (Course on Computer Concepts) - NIELIT
 Duration: 3–4 Months
 
 Modules:
