@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import LogoAiseci from "../assets/Images/LogoAiseci.png"
+import LogoAiseci from "../assets/Images/LogoAiseci.png";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -10,13 +10,13 @@ const Navbar = () => {
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         {/* Logo and Tagline */}
         <div>
-        <Link to='/'>
-        <img
-            src={LogoAiseci}
-            alt="AISECI Logo"
-            className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
-          />
-        </Link>
+          <Link to="/">
+            <img
+              src={LogoAiseci}
+              alt="AISECI Logo"
+              className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+            />
+          </Link>
         </div>
 
         {/* Desktop Menu */}
@@ -43,6 +43,14 @@ const Navbar = () => {
               className="hover:text-yellow-400 transition-colors duration-300"
             >
               Courses
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/enrollementtable"
+              className="hover:text-yellow-400 transition-colors duration-300"
+            >
+              Enrollement-Table
             </Link>
           </li>
           <li>

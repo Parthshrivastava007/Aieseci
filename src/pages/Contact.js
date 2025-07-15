@@ -187,7 +187,7 @@ const Contact = () => {
                   id="rollnumber"
                   name="rollnumber"
                   className="p-2 border border-gray-300 rounded-md"
-                  placeholder="e.g. AIE123456"
+                  placeholder="e.g. AFT-000"
                 />
               </div>
 
