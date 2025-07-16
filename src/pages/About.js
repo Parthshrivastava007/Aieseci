@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import papa from "../assets/Images/papa.jpg";
+import { Link } from "react-router-dom";
 
 const About = () => {
   useEffect(() => {
@@ -112,7 +113,7 @@ const About = () => {
         <h2 className="text-3xl font-semibold text-center">Our Achievements</h2>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-8 mt-10">
           {[
-            { stat: "500+", text: "Students Trained" },
+            { stat: "1000+", text: "Students Trained" },
             { stat: "95%", text: "Certification Success" },
             { stat: "10+", text: "Courses Offered" },
           ].map((item, index) => (
@@ -130,20 +131,22 @@ const About = () => {
       </section>
 
       {/* Call-to-Action Section */}
-      <section
-        className="bg-gradient-to-r from-blue-900 to-gray-900 py-16 text-center"
-        data-aos="fade-up"
-      >
-        <div className="relative inline-block rounded-xl p-8 bg-gray-900 text-sky-200 border-2 border-yellow-400 shadow-[0_0_2px_#fff,inset_0_0_2px_#fff,0_0_5px_#08f,0_0_15px_#08f,0_0_30px_#08f] transition-transform duration-300 hover:scale-105">
-          <h2 className="text-3xl md:text-4xl font-semibold">
-            Join AIESECI Today
-          </h2>
-          <p className="text-gray-300 mt-4">
-            Start your journey towards a successful career in the digital world.
-            Explore our wide range of courses and enroll now.
-          </p>
-        </div>
-      </section>
+      <Link to="/courses">
+        <section
+          className="cursor-pointer bg-gradient-to-r from-blue-900 to-gray-900 py-16 text-center"
+          data-aos="fade-up"
+        >
+          <div className="relative inline-block rounded-xl p-8 bg-gray-900 text-sky-200 border-2 border-yellow-400 shadow-[0_0_2px_#fff,inset_0_0_2px_#fff,0_0_5px_#08f,0_0_15px_#08f,0_0_30px_#08f] transition-transform duration-300 hover:scale-105">
+            <h2 className="text-3xl md:text-4xl font-semibold">
+              Join AIESECI Today
+            </h2>
+            <p className="text-gray-300 mt-4">
+              Start your journey towards a successful career in the digital
+              world. Explore our wide range of courses and enroll now.
+            </p>
+          </div>
+        </section>
+      </Link>
     </div>
   );
 };

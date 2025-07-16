@@ -18,9 +18,13 @@ const CourseForm = () => {
 
   const [formData, setFormData] = useState({
     name: "",
+    fatherName: "",
     email: "",
     rollNo: "",
     phone: "",
+    aadhaar: "",
+    address: "",
+    dob: "",
     course: courseName || "",
   });
 
@@ -38,14 +42,14 @@ const CourseForm = () => {
     setLoading(true);
 
     try {
+      const docId = `${formData.rollNo || "noRoll"}_${formData.phone}`;
       const q = query(
         collection(db, "enrollments"),
         where("rollNo", "==", formData.rollNo),
         where("phone", "==", formData.phone)
       );
-      const snapshot = await getDocs(q);
 
-      const docId = `${formData.rollNo}_${formData.phone}`;
+      const snapshot = await getDocs(q);
 
       await setDoc(doc(db, "enrollments", docId), {
         ...formData,
@@ -58,12 +62,15 @@ const CourseForm = () => {
           : "Enrollment updated successfully!"
       );
 
-      // Reset the form
       setFormData({
         name: "",
+        fatherName: "",
         email: "",
         rollNo: "",
         phone: "",
+        aadhaar: "",
+        address: "",
+        dob: "",
         course: courseName || "",
       });
     } catch (err) {
@@ -93,12 +100,31 @@ const CourseForm = () => {
           onChange={handleChange}
         />
 
+        <label className="block mb-1">Date of Birth</label>
+        <input
+          type="date"
+          name="dob"
+          value={formData.dob}
+          required
+          className="w-full p-2 mb-4 text-black rounded"
+          onChange={handleChange}
+        />
+
+        <label className="block mb-1">Father's Name</label>
+        <input
+          type="text"
+          name="fatherName"
+          value={formData.fatherName}
+          required
+          className="w-full p-2 mb-4 text-black rounded"
+          onChange={handleChange}
+        />
+
         <label className="block mb-1">Email</label>
         <input
           type="email"
           name="email"
           value={formData.email}
-          required
           className="w-full p-2 mb-4 text-black rounded"
           onChange={handleChange}
         />
@@ -108,7 +134,6 @@ const CourseForm = () => {
           type="text"
           name="rollNo"
           value={formData.rollNo}
-          required
           className="w-full p-2 mb-4 text-black rounded"
           onChange={handleChange}
         />
@@ -119,6 +144,34 @@ const CourseForm = () => {
           name="phone"
           value={formData.phone}
           pattern="[0-9]{10}"
+          maxLength={10}
+          required
+          className="w-full p-2 mb-4 text-black rounded"
+          onChange={(e) => {
+            const onlyNums = e.target.value.replace(/\D/g, "");
+            setFormData((prev) => ({
+              ...prev,
+              phone: onlyNums,
+            }));
+          }}
+        />
+
+        <label className="block mb-1">Aadhaar Number</label>
+        <input
+          type="text"
+          name="aadhaar"
+          value={formData.aadhaar}
+          pattern="\d{12}"
+          maxLength={12}
+          required
+          className="w-full p-2 mb-4 text-black rounded"
+          onChange={handleChange}
+        />
+
+        <label className="block mb-1">Address</label>
+        <textarea
+          name="address"
+          value={formData.address}
           required
           className="w-full p-2 mb-4 text-black rounded"
           onChange={handleChange}
