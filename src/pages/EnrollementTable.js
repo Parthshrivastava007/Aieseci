@@ -16,15 +16,16 @@ import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
 
 const allowedAdminEmail = "aieseci.anpara@gmail.com";
-const allowedAdminPassword = "admin123"; // 🔒 You can store securely later
+const allowedAdminPassword = "admin123"; // 🔒 You can store this securely later
 
 const EnrollmentTable = () => {
   // Admin and Student States
   const [studentName, setStudentName] = useState("");
   const [studentDob, setStudentDob] = useState("");
-  const [studentEmail, setStudentEmail] = useState(""); // kept for legacy/filtering use
+  const [studentEmail, setStudentEmail] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -49,15 +50,19 @@ const EnrollmentTable = () => {
 
   // 🔐 Access Handler
   const handleAccess = async (role) => {
+    setErrorMessage("");
+
     if (role === "admin") {
-      if (
+      const isValid =
         adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
-        adminPassword === allowedAdminPassword
-      ) {
+        adminPassword === allowedAdminPassword;
+
+      if (isValid) {
         setIsAdmin(true);
         setAuthenticated(true);
         toast.success("Admin access granted");
       } else {
+        setErrorMessage("Invalid admin credentials");
         toast.error("Invalid admin credentials");
       }
     } else {
@@ -71,11 +76,12 @@ const EnrollmentTable = () => {
 
       if (!snapshot.empty) {
         const studentData = snapshot.docs[0].data();
-        setStudentEmail(studentData.email || ""); // for legacy filter
+        setStudentEmail(studentData.email || "");
         setIsAdmin(false);
         setAuthenticated(true);
         toast.success("Student access granted");
       } else {
+        setErrorMessage("Student not found. Please check your Name and DOB.");
         toast.error("Student not found. Please check your Name and DOB.");
       }
     }
@@ -115,7 +121,6 @@ const EnrollmentTable = () => {
     if (authenticated) fetchData();
   }, [authenticated]);
 
-  // 🔁 Update entry
   const handleUpdate = async () => {
     try {
       await updateDoc(doc(db, "enrollments", editId), editData);
@@ -127,7 +132,6 @@ const EnrollmentTable = () => {
     }
   };
 
-  // ❌ Delete entry
   const handleDelete = async (id) => {
     try {
       await deleteDoc(doc(db, "enrollments", id));
@@ -153,7 +157,6 @@ const EnrollmentTable = () => {
       })
     : enrollments;
 
-  // ⬇️ Download CSV
   const handleDownloadCSV = () => {
     if (!filteredEnrollments || filteredEnrollments.length === 0) {
       toast.warn("No enrollment data to download.");
@@ -206,24 +209,28 @@ const EnrollmentTable = () => {
     document.body.removeChild(link);
   };
 
-  // ⛔ Not logged in
   if (!authenticated) {
     return (
-      <AccessCard
-        adminEmail={adminEmail}
-        setAdminEmail={setAdminEmail}
-        adminPassword={adminPassword}
-        setAdminPassword={setAdminPassword}
-        studentName={studentName}
-        setStudentName={setStudentName}
-        studentDob={studentDob}
-        setStudentDob={setStudentDob}
-        handleAccess={handleAccess}
-      />
+      <>
+        <ToastContainer />
+        <AccessCard
+          studentName={studentName}
+          setStudentName={setStudentName}
+          studentDob={studentDob}
+          setStudentDob={setStudentDob}
+          studentEmail={studentEmail}
+          setStudentEmail={setStudentEmail}
+          adminEmail={adminEmail}
+          setAdminEmail={setAdminEmail}
+          adminPassword={adminPassword}
+          setAdminPassword={setAdminPassword}
+          handleAccess={handleAccess}
+          errorMessage={errorMessage}
+        />
+      </>
     );
   }
 
-  // ✅ Main View
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <ToastContainer />
