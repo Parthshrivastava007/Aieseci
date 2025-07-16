@@ -1,24 +1,21 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const AccessCard = ({
-  // Student props
   studentName,
   setStudentName,
   studentDob,
   setStudentDob,
-
-  // Admin props
   adminEmail,
   setAdminEmail,
   adminPassword,
   setAdminPassword,
-
-  // Error message
   errorMessage,
-
   handleAccess,
 }) => {
+  const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
     if (errorMessage) {
       toast.error(errorMessage);
@@ -73,13 +70,21 @@ const AccessCard = ({
           />
 
           <label className="block mb-1 font-semibold text-sm">Password</label>
-          <input
-            type="password"
-            value={adminPassword}
-            onChange={(e) => setAdminPassword(e.target.value)}
-            placeholder="Enter password"
-            className="p-2 text-black rounded mb-4 w-full"
-          />
+          <div className="relative mb-4">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="Enter password"
+              className="p-2 text-black rounded w-full pr-10"
+            />
+            <span
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-400 cursor-pointer"
+            >
+              {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+            </span>
+          </div>
 
           <button
             onClick={() => handleAccess("admin")}

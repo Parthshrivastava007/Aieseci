@@ -16,25 +16,21 @@ import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
 
 const allowedAdminEmail = "aieseci.anpara@gmail.com";
-const allowedAdminPassword = "Aieseci@220471"; 
+const allowedAdminPassword = "Aieseci@220471";
 
 const EnrollmentTable = () => {
-  // Admin and Student States
+  // State declarations remain the same...
   const [studentName, setStudentName] = useState("");
   const [studentDob, setStudentDob] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // Enrollment Data States
   const [enrollments, setEnrollments] = useState([]);
   const [searchRollNo, setSearchRollNo] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
-
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({
     rollNo: "",
@@ -53,11 +49,10 @@ const EnrollmentTable = () => {
     setErrorMessage("");
 
     if (role === "admin") {
-      const isValid =
+      if (
         adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
-        adminPassword === allowedAdminPassword;
-
-      if (isValid) {
+        adminPassword === allowedAdminPassword
+      ) {
         setIsAdmin(true);
         setAuthenticated(true);
         toast.success("Admin access granted");
@@ -66,7 +61,6 @@ const EnrollmentTable = () => {
         toast.error("Invalid admin credentials");
       }
     } else {
-      // Student access via name + dob
       const q = query(
         collection(db, "enrollments"),
         where("name", "==", studentName.trim()),
@@ -87,7 +81,16 @@ const EnrollmentTable = () => {
     }
   };
 
-  // 🔄 Fetch data
+  const handleLogout = () => {
+    setAuthenticated(false);
+    setIsAdmin(false);
+    setStudentName("");
+    setStudentDob("");
+    setAdminEmail("");
+    setAdminPassword("");
+    toast.info("Logged out successfully");
+  };
+
   const fetchData = async () => {
     try {
       const snapshot = await getDocs(collection(db, "enrollments"));
@@ -112,7 +115,7 @@ const EnrollmentTable = () => {
         );
         setEnrollments(filtered);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch data");
     }
   };
@@ -158,7 +161,7 @@ const EnrollmentTable = () => {
     : enrollments;
 
   const handleDownloadCSV = () => {
-    if (!filteredEnrollments || filteredEnrollments.length === 0) {
+    if (!filteredEnrollments.length) {
       toast.warn("No enrollment data to download.");
       return;
     }
@@ -234,18 +237,28 @@ const EnrollmentTable = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <ToastContainer />
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">
-          {isAdmin ? "All Enrollment Records" : "Your Enrollment Record"}
-        </h1>
-        {isAdmin && (
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">
+            {isAdmin ? "All Enrollment Records" : "Your Enrollment Record"}
+          </h1>
+        </div>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <button
+              onClick={handleDownloadCSV}
+              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
+            >
+              Download CSV
+            </button>
+          )}
           <button
-            onClick={handleDownloadCSV}
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white"
           >
-            Download CSV
+            Logout
           </button>
-        )}
+        </div>
       </div>
 
       {isAdmin && (
