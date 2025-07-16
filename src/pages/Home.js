@@ -8,13 +8,11 @@ import image4 from "../assets/Images/image4.jpg";
 import image5 from "../assets/Images/image5.jpg";
 
 const Home = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-
   useEffect(() => {
     AOS.init({
-      duration: 1000, // Animation duration
-      easing: "ease-in-out", // Smooth easing effect
-      once: true, // Trigger animation only once
+      duration: 1000,
+      easing: "ease-in-out",
+      once: true,
     });
   }, []);
 
@@ -23,44 +21,6 @@ const Home = () => {
   return (
     <div className="bg-gray-800 w-full min-h-screen h-full text-white flex flex-col items-center justify-center px-4 text-center">
       {/* Hamburger Icon (Visible on Small Screens) */}
-      <div
-        className="sm:hidden fixed top-5 right-5 z-50 cursor-pointer"
-        onClick={() => setMenuOpen(!menuOpen)}
-      >
-        <div
-          className={`w-8 h-1 bg-white rounded transition-transform duration-300 ${
-            menuOpen ? "rotate-45 translate-y-2" : ""
-          }`}
-        />
-        <div
-          className={`w-8 h-1 bg-white rounded my-1 transition-opacity duration-300 ${
-            menuOpen ? "opacity-0" : ""
-          }`}
-        />
-        <div
-          className={`w-8 h-1 bg-white rounded transition-transform duration-300 ${
-            menuOpen ? "-rotate-45 -translate-y-2" : ""
-          }`}
-        />
-      </div>
-
-      {/* Mobile Menu */}
-      <div
-        className={`fixed inset-0 bg-gray-900 bg-opacity-90 flex flex-col items-center justify-center transition-transform duration-500 sm:hidden ${
-          menuOpen ? "scale-100" : "scale-0"
-        }`}
-      >
-        <ul className="text-white text-2xl space-y-6">
-          <li className="hover:text-blue-400 transition duration-300">Home</li>
-          <li className="hover:text-blue-400 transition duration-300">About</li>
-          <li className="hover:text-blue-400 transition duration-300">
-            Courses
-          </li>
-          <li className="hover:text-blue-400 transition duration-300">
-            Contact
-          </li>
-        </ul>
-      </div>
 
       <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold">
         Welcome to <span className="text-blue-400">AIESECI</span>
