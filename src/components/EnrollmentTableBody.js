@@ -11,13 +11,21 @@ const EnrollmentTableBody = ({
   handleDelete,
   handleEdit,
 }) => {
-  // Format DOB from yyyy-mm-dd to dd-mm-yyyy if needed
   const formatDob = (dob) => {
     if (!dob) return "";
     const parts = dob.split("-");
     return parts.length === 3 && parts[0].length === 4
       ? `${parts[2]}-${parts[1]}-${parts[0]}`
       : dob;
+  };
+
+  const formatEnrollmentDate = (createdAt) => {
+    if (!createdAt?.toDate) return "";
+    const date = createdAt.toDate();
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
   };
 
   return (
@@ -35,7 +43,8 @@ const EnrollmentTableBody = ({
             <th className="p-3 border">Aadhaar</th>
             <th className="p-3 border">Address</th>
             <th className="p-3 border">DOB</th>
-            <th className="p-3 border border-gray-700">Actions</th>
+            <th className="p-3 border">Enrollment Date</th>
+            {isAdmin && <th className="p-3 border border-gray-700">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -72,47 +81,55 @@ const EnrollmentTableBody = ({
                   </td>
                 ))}
 
-                <td className="p-3 border border-gray-600 flex gap-2">
-                  {isEditing ? (
-                    <>
-                      <button
-                        onClick={handleUpdate}
-                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditId(null)}
-                        className="bg-gray-500 hover:bg-gray-600 px-3 py-1 rounded text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleEdit(entry)}
-                        className="bg-yellow-500 hover:bg-yellow-600 px-3 py-1 rounded text-sm"
-                      >
-                        Edit
-                      </button>
-                      {isAdmin && (
+                <td className="p-3 border">
+                  {formatEnrollmentDate(entry.createdAt)}
+                </td>
+
+                {isAdmin && (
+                  <td className="p-3 border border-gray-600 flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleUpdate}
+                          className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditId(null)}
+                          className="bg-gray-500 hover:bg-gray-600 px-3 py-1 rounded text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          className="bg-yellow-500 hover:bg-yellow-600 px-3 py-1 rounded text-sm"
+                        >
+                          Edit
+                        </button>
                         <button
                           onClick={() => handleDelete(entry.id)}
                           className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
                         >
                           Delete
                         </button>
-                      )}
-                    </>
-                  )}
-                </td>
+                      </>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}
+
           {filteredEnrollments.length === 0 && (
             <tr>
-              <td colSpan={11} className="text-center py-6 text-gray-400">
+              <td
+                colSpan={isAdmin ? 12 : 11}
+                className="text-center py-6 text-gray-400"
+              >
                 No records found.
               </td>
             </tr>

@@ -16,6 +16,8 @@ const CourseForm = () => {
   const [searchParams] = useSearchParams();
   const courseName = searchParams.get("course");
 
+  const todayDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
+
   const [formData, setFormData] = useState({
     name: "",
     fatherName: "",
@@ -26,6 +28,7 @@ const CourseForm = () => {
     address: "",
     dob: "",
     course: courseName || "",
+    dateOfEnrollment: todayDate,
   });
 
   const [loading, setLoading] = useState(false);
@@ -72,6 +75,7 @@ const CourseForm = () => {
         address: "",
         dob: "",
         course: courseName || "",
+        dateOfEnrollment: todayDate,
       });
     } catch (err) {
       console.error("Error submitting form:", err);
@@ -175,6 +179,15 @@ const CourseForm = () => {
           required
           className="w-full p-2 mb-4 text-black rounded"
           onChange={handleChange}
+        />
+
+        <label className="block mb-1">Date of Enrollment</label>
+        <input
+          type="text"
+          name="dateOfEnrollment"
+          value={formData.dateOfEnrollment}
+          disabled
+          className="w-full p-2 mb-4 text-black rounded bg-gray-200 cursor-not-allowed"
         />
 
         <button

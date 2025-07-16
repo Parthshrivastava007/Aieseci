@@ -33,6 +33,7 @@ const EnrollmentTable = () => {
     course: "",
     aadhaar: "",
     address: "",
+    dob: "",
   });
 
   const handleAccess = (role) => {
@@ -107,42 +108,6 @@ const EnrollmentTable = () => {
     }
   };
 
-  const handleDownloadCSV = () => {
-    const csvRows = [
-      [
-        "#",
-        "Roll No",
-        "Name",
-        "Father Name",
-        "Email",
-        "Phone",
-        "Course",
-        "Aadhaar",
-        "Address",
-      ],
-      ...filteredEnrollments.map((entry, idx) => [
-        idx + 1,
-        entry.rollNo,
-        entry.name,
-        entry.fatherName,
-        entry.email,
-        entry.phone,
-        entry.course,
-        entry.aadhaar || "",
-        entry.address || "",
-      ]),
-    ];
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      csvRows.map((row) => row.join(",")).join("\n");
-    const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
-    link.download = "enrollments.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const courseOptions = Array.from(
     new Set(enrollments.map((e) => e.course))
   ).filter(Boolean);
@@ -157,6 +122,58 @@ const EnrollmentTable = () => {
         return (matchesRoll || matchesName) && matchesCourse;
       })
     : enrollments;
+
+  const handleDownloadCSV = () => {
+    if (!filteredEnrollments || filteredEnrollments.length === 0) {
+      toast.warn("No enrollment data to download.");
+      return;
+    }
+
+    const csvHeader = [
+      "S.No",
+      "Roll No",
+      "Name",
+      "Father Name",
+      "Email",
+      "Phone",
+      "Course",
+      "Aadhaar",
+      "Address",
+      "Date of Birth",
+      "Date of Enrollment",
+    ];
+
+    const csvRows = filteredEnrollments.map((entry, idx) => [
+      idx + 1,
+      entry.rollNo || "",
+      entry.name || "",
+      entry.fatherName || "",
+      entry.email || "",
+      entry.phone || "",
+      entry.course || "",
+      entry.aadhaar || "",
+      entry.address || "",
+      entry.dob || "",
+      entry.createdAt?.toDate?.().toLocaleDateString("en-IN") || "",
+    ]);
+
+    const allRows = [csvHeader, ...csvRows];
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      allRows
+        .map((row) =>
+          row.map((cell) => `"${(cell + "").replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.href = encodedUri;
+    link.download = "enrollments.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (!authenticated) {
     return (
