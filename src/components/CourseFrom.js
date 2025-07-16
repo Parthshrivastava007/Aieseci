@@ -16,7 +16,7 @@ const CourseForm = () => {
   const [searchParams] = useSearchParams();
   const courseName = searchParams.get("course");
 
-  const todayDate = new Date().toLocaleDateString("en-GB"); // dd/mm/yyyy
+  const todayDate = new Date().toLocaleDateString("en-GB");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -48,16 +48,22 @@ const CourseForm = () => {
       const docId = `${formData.rollNo || "noRoll"}_${formData.phone}`;
       const q = query(
         collection(db, "enrollments"),
-        where("rollNo", "==", formData.rollNo),
-        where("phone", "==", formData.phone)
+        where("phone", "==", formData.phone),
+        ...(formData.rollNo ? [where("rollNo", "==", formData.rollNo)] : [])
       );
 
       const snapshot = await getDocs(q);
 
-      await setDoc(doc(db, "enrollments", docId), {
+      const enrollmentData = {
         ...formData,
         [snapshot.empty ? "createdAt" : "updatedAt"]: new Date(),
-      });
+      };
+
+      if (["CCC", "O-Level"].includes(courseName)) {
+        delete enrollmentData.rollNo; // remove rollNo field if not required
+      }
+
+      await setDoc(doc(db, "enrollments", docId), enrollmentData);
 
       toast.success(
         snapshot.empty
@@ -133,14 +139,19 @@ const CourseForm = () => {
           onChange={handleChange}
         />
 
-        <label className="block mb-1">Roll Number</label>
-        <input
-          type="text"
-          name="rollNo"
-          value={formData.rollNo}
-          className="w-full p-2 mb-4 text-black rounded"
-          onChange={handleChange}
-        />
+        {/* Conditionally Render Roll Number */}
+        {!["CCC", "O-Level"].includes(courseName) && (
+          <>
+            <label className="block mb-1">Roll Number</label>
+            <input
+              type="text"
+              name="rollNo"
+              value={formData.rollNo}
+              className="w-full p-2 mb-4 text-black rounded"
+              onChange={handleChange}
+            />
+          </>
+        )}
 
         <label className="block mb-1">Mobile Number</label>
         <input
@@ -167,9 +178,14 @@ const CourseForm = () => {
           value={formData.aadhaar}
           pattern="\d{12}"
           maxLength={12}
-          required
           className="w-full p-2 mb-4 text-black rounded"
-          onChange={handleChange}
+          onChange={(e) => {
+            const onlyNums = e.target.value.replace(/\D/g, "");
+            setFormData((prev) => ({
+              ...prev,
+              aadhaar: onlyNums,
+            }));
+          }}
         />
 
         <label className="block mb-1">Address</label>
