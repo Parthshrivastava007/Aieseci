@@ -5,6 +5,8 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { db } from "../Backend/firebase";
 import { toast, ToastContainer } from "react-toastify";
@@ -14,15 +16,24 @@ import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
 
 const allowedAdminEmail = "aieseci.anpara@gmail.com";
+const allowedAdminPassword = "admin123"; // 🔒 You can store securely later
 
 const EnrollmentTable = () => {
-  const [studentEmail, setStudentEmail] = useState("");
+  // Admin and Student States
+  const [studentName, setStudentName] = useState("");
+  const [studentDob, setStudentDob] = useState("");
+  const [studentEmail, setStudentEmail] = useState(""); // kept for legacy/filtering use
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Enrollment Data States
   const [enrollments, setEnrollments] = useState([]);
   const [searchRollNo, setSearchRollNo] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
+
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({
     rollNo: "",
@@ -36,26 +47,41 @@ const EnrollmentTable = () => {
     dob: "",
   });
 
-  const handleAccess = (role) => {
-    const emailToUse = role === "admin" ? adminEmail : studentEmail;
-    const normalizedInput = emailToUse.trim().toLowerCase();
-
-    if (
-      role === "admin" &&
-      normalizedInput === allowedAdminEmail.toLowerCase()
-    ) {
-      setIsAdmin(true);
-      setAuthenticated(true);
-      toast.success("Admin access granted");
-    } else if (role === "student") {
-      setIsAdmin(false);
-      setAuthenticated(true);
-      toast.success("Student access granted");
+  // 🔐 Access Handler
+  const handleAccess = async (role) => {
+    if (role === "admin") {
+      if (
+        adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
+        adminPassword === allowedAdminPassword
+      ) {
+        setIsAdmin(true);
+        setAuthenticated(true);
+        toast.success("Admin access granted");
+      } else {
+        toast.error("Invalid admin credentials");
+      }
     } else {
-      toast.error("Access denied");
+      // Student access via name + dob
+      const q = query(
+        collection(db, "enrollments"),
+        where("name", "==", studentName.trim()),
+        where("dob", "==", studentDob)
+      );
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const studentData = snapshot.docs[0].data();
+        setStudentEmail(studentData.email || ""); // for legacy filter
+        setIsAdmin(false);
+        setAuthenticated(true);
+        toast.success("Student access granted");
+      } else {
+        toast.error("Student not found. Please check your Name and DOB.");
+      }
     }
   };
 
+  // 🔄 Fetch data
   const fetchData = async () => {
     try {
       const snapshot = await getDocs(collection(db, "enrollments"));
@@ -74,7 +100,9 @@ const EnrollmentTable = () => {
         setEnrollments(sortedData);
       } else {
         const filtered = sortedData.filter(
-          (entry) => entry.email?.toLowerCase() === studentEmail.toLowerCase()
+          (entry) =>
+            entry.name?.toLowerCase() === studentName.toLowerCase() &&
+            entry.dob === studentDob
         );
         setEnrollments(filtered);
       }
@@ -87,16 +115,7 @@ const EnrollmentTable = () => {
     if (authenticated) fetchData();
   }, [authenticated]);
 
-  const handleDelete = async (id) => {
-    try {
-      await deleteDoc(doc(db, "enrollments", id));
-      toast.success("Enrollment deleted");
-      fetchData();
-    } catch {
-      toast.error("Failed to delete entry");
-    }
-  };
-
+  // 🔁 Update entry
   const handleUpdate = async () => {
     try {
       await updateDoc(doc(db, "enrollments", editId), editData);
@@ -105,6 +124,17 @@ const EnrollmentTable = () => {
       fetchData();
     } catch {
       toast.error("Update failed");
+    }
+  };
+
+  // ❌ Delete entry
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoc(doc(db, "enrollments", id));
+      toast.success("Enrollment deleted");
+      fetchData();
+    } catch {
+      toast.error("Failed to delete entry");
     }
   };
 
@@ -123,6 +153,7 @@ const EnrollmentTable = () => {
       })
     : enrollments;
 
+  // ⬇️ Download CSV
   const handleDownloadCSV = () => {
     if (!filteredEnrollments || filteredEnrollments.length === 0) {
       toast.warn("No enrollment data to download.");
@@ -139,8 +170,8 @@ const EnrollmentTable = () => {
       "Course",
       "Aadhaar",
       "Address",
-      "Date of Birth",
-      "Date of Enrollment",
+      "DOB",
+      "Enrollment Date",
     ];
 
     const csvRows = filteredEnrollments.map((entry, idx) => [
@@ -175,18 +206,24 @@ const EnrollmentTable = () => {
     document.body.removeChild(link);
   };
 
+  // ⛔ Not logged in
   if (!authenticated) {
     return (
       <AccessCard
-        studentEmail={studentEmail}
-        setStudentEmail={setStudentEmail}
         adminEmail={adminEmail}
         setAdminEmail={setAdminEmail}
+        adminPassword={adminPassword}
+        setAdminPassword={setAdminPassword}
+        studentName={studentName}
+        setStudentName={setStudentName}
+        studentDob={studentDob}
+        setStudentDob={setStudentDob}
         handleAccess={handleAccess}
       />
     );
   }
 
+  // ✅ Main View
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <ToastContainer />
