@@ -44,7 +44,7 @@ const EnrollmentTableBody = ({
             <th className="p-3 border">Address</th>
             <th className="p-3 border">DOB</th>
             <th className="p-3 border">Enrollment Date</th>
-            {isAdmin && <th className="p-3 border border-gray-700">Actions</th>}
+            {isAdmin && <th className="p-3 border">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -53,7 +53,6 @@ const EnrollmentTableBody = ({
             return (
               <tr key={entry.id} className="bg-gray-700">
                 <td className="p-3 border">{index + 1}</td>
-
                 {[
                   "rollNo",
                   "name",

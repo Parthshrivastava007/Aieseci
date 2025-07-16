@@ -16,7 +16,7 @@ import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
 
 const allowedAdminEmail = "aieseci.anpara@gmail.com";
-const allowedAdminPassword = "admin123"; // 🔒 You can store this securely later
+const allowedAdminPassword = "Aieseci@220471"; 
 
 const EnrollmentTable = () => {
   // Admin and Student States

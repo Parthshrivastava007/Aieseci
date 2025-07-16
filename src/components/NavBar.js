@@ -105,6 +105,14 @@ const Navbar = () => {
             </li>
             <li>
               <Link
+                to="/enrollementtable"
+                className="hover:text-yellow-400 transition-colors duration-300"
+              >
+                Enrollement-Table
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/contact"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block hover:text-yellow-400 transition-colors duration-300"
