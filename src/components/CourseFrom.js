@@ -46,22 +46,27 @@ const CourseForm = () => {
 
     try {
       const docId = `${formData.rollNo || "noRoll"}_${formData.phone}`;
+
       const q = query(
         collection(db, "enrollments"),
         where("phone", "==", formData.phone),
-        ...(formData.rollNo ? [where("rollNo", "==", formData.rollNo)] : [])
+        ...(formData.rollNo
+          ? [where("rollNo", "==", `AFT-${formData.rollNo}`)]
+          : [])
       );
 
       const snapshot = await getDocs(q);
 
+      const rollNoWithPrefix =
+        !["CCC", "O-Level"].includes(courseName) && formData.rollNo
+          ? `AFT-${formData.rollNo}`
+          : "";
+
       const enrollmentData = {
         ...formData,
+        rollNo: rollNoWithPrefix,
         [snapshot.empty ? "createdAt" : "updatedAt"]: new Date(),
       };
-
-      if (["CCC", "O-Level"].includes(courseName)) {
-        delete enrollmentData.rollNo; // remove rollNo field if not required
-      }
 
       await setDoc(doc(db, "enrollments", docId), enrollmentData);
 
@@ -139,17 +144,26 @@ const CourseForm = () => {
           onChange={handleChange}
         />
 
-        {/* Conditionally Render Roll Number */}
         {!["CCC", "O-Level"].includes(courseName) && (
           <>
             <label className="block mb-1">Roll Number</label>
-            <input
-              type="text"
-              name="rollNo"
-              value={formData.rollNo}
-              className="w-full p-2 mb-4 text-black rounded"
-              onChange={handleChange}
-            />
+            <div className="relative">
+              <span className="absolute  top-5 left-2 transform -translate-y-1/2 text-black font-semibold">
+                AFT -
+              </span>
+              <input
+                type="text"
+                name="rollNo"
+                value={formData.rollNo}
+                className="w-full p-2 pl-14 mb-4 text-black rounded"
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    rollNo: e.target.value.replace(/\D/g, ""),
+                  }))
+                }
+              />
+            </div>
           </>
         )}
 

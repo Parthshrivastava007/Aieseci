@@ -50,7 +50,7 @@ const Navbar = () => {
               to="/enrollementtable"
               className="hover:text-yellow-400 transition-colors duration-300"
             >
-              Enrollement-Table
+              Student-Registry
             </Link>
           </li>
           <li>
@@ -108,7 +108,7 @@ const Navbar = () => {
                 to="/enrollementtable"
                 className="hover:text-yellow-400 transition-colors duration-300"
               >
-                Enrollement-Table
+                Student-Registry
               </Link>
             </li>
             <li>
