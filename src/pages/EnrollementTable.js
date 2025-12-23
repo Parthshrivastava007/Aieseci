@@ -11,6 +11,7 @@ import {
 import { db } from "../Backend/firebase";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 import AccessCard from "../components/AccessCard";
 import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
@@ -19,18 +20,27 @@ const allowedAdminEmail = "aieseci.anpara@gmail.com";
 const allowedAdminPassword = "Aieseci@220471";
 
 const EnrollmentTable = () => {
-  // State declarations remain the same...
+  // 🔹 Student
   const [studentName, setStudentName] = useState("");
   const [studentDob, setStudentDob] = useState("");
-  const [studentEmail, setStudentEmail] = useState("");
+
+  // 🔹 Admin
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+
+  // 🔹 Auth
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // 🔹 Data
   const [enrollments, setEnrollments] = useState([]);
+
+  // 🔹 Filters (Admin)
   const [searchRollNo, setSearchRollNo] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
+
+  // 🔹 Edit
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({
     rollNo: "",
@@ -44,10 +54,13 @@ const EnrollmentTable = () => {
     dob: "",
   });
 
-  // 🔐 Access Handler
+  /* =========================
+     ACCESS HANDLER
+  ========================== */
   const handleAccess = async (role) => {
     setErrorMessage("");
 
+    // 🔐 ADMIN
     if (role === "admin") {
       if (
         adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
@@ -60,38 +73,43 @@ const EnrollmentTable = () => {
         setErrorMessage("Invalid admin credentials");
         toast.error("Invalid admin credentials");
       }
-    } else {
+      return;
+    }
+
+    // 🎓 STUDENT
+    try {
       const q = query(
         collection(db, "enrollments"),
         where("name", "==", studentName.trim()),
         where("dob", "==", studentDob)
       );
+
       const snapshot = await getDocs(q);
 
-      if (!snapshot.empty) {
-        const studentData = snapshot.docs[0].data();
-        setStudentEmail(studentData.email || "");
-        setIsAdmin(false);
-        setAuthenticated(true);
-        toast.success("Student access granted");
-      } else {
-        setErrorMessage("Student not found. Please check your Name and DOB.");
-        toast.error("Student not found. Please check your Name and DOB.");
+      if (snapshot.empty) {
+        setErrorMessage("Student not found. Check Name & DOB.");
+        toast.error("Student not found. Check Name & DOB.");
+        return;
       }
+
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setEnrollments(data);
+      setIsAdmin(false);
+      setAuthenticated(true);
+      toast.success("Student access granted");
+    } catch (err) {
+      toast.error("Something went wrong");
     }
   };
 
-  const handleLogout = () => {
-    setAuthenticated(false);
-    setIsAdmin(false);
-    setStudentName("");
-    setStudentDob("");
-    setAdminEmail("");
-    setAdminPassword("");
-    toast.info("Logged out successfully");
-  };
-
-  const fetchData = async () => {
+  /* =========================
+     FETCH ADMIN DATA
+  ========================== */
+  const fetchAdminData = async () => {
     try {
       const snapshot = await getDocs(collection(db, "enrollments"));
       const data = snapshot.docs.map((doc) => ({
@@ -99,37 +117,33 @@ const EnrollmentTable = () => {
         ...doc.data(),
       }));
 
-      const sortedData = data.sort((a, b) => {
+      data.sort((a, b) => {
         const aDate = a.createdAt?.toDate?.() || new Date(0);
         const bDate = b.createdAt?.toDate?.() || new Date(0);
         return bDate - aDate;
       });
 
-      if (isAdmin) {
-        setEnrollments(sortedData);
-      } else {
-        const filtered = sortedData.filter(
-          (entry) =>
-            entry.name?.toLowerCase() === studentName.toLowerCase() &&
-            entry.dob === studentDob
-        );
-        setEnrollments(filtered);
-      }
+      setEnrollments(data);
     } catch {
       toast.error("Failed to fetch data");
     }
   };
 
   useEffect(() => {
-    if (authenticated) fetchData();
-  }, [authenticated]);
+    if (authenticated && isAdmin) {
+      fetchAdminData();
+    }
+  }, [authenticated, isAdmin]);
 
+  /* =========================
+     CRUD
+  ========================== */
   const handleUpdate = async () => {
     try {
       await updateDoc(doc(db, "enrollments", editId), editData);
       toast.success("Enrollment updated");
       setEditId(null);
-      fetchData();
+      fetchAdminData();
     } catch {
       toast.error("Update failed");
     }
@@ -139,12 +153,15 @@ const EnrollmentTable = () => {
     try {
       await deleteDoc(doc(db, "enrollments", id));
       toast.success("Enrollment deleted");
-      fetchData();
+      fetchAdminData();
     } catch {
-      toast.error("Failed to delete entry");
+      toast.error("Delete failed");
     }
   };
 
+  /* =========================
+     FILTERS (ADMIN)
+  ========================== */
   const courseOptions = Array.from(
     new Set(enrollments.map((e) => e.course))
   ).filter(Boolean);
@@ -160,58 +177,23 @@ const EnrollmentTable = () => {
       })
     : enrollments;
 
-  const handleDownloadCSV = () => {
-    if (!filteredEnrollments.length) {
-      toast.warn("No enrollment data to download.");
-      return;
-    }
-
-    const csvHeader = [
-      "S.No",
-      "Roll No",
-      "Name",
-      "Father Name",
-      "Email",
-      "Phone",
-      "Course",
-      "Aadhaar",
-      "Address",
-      "DOB",
-      "Enrollment Date",
-    ];
-
-    const csvRows = filteredEnrollments.map((entry, idx) => [
-      idx + 1,
-      entry.rollNo || "",
-      entry.name || "",
-      entry.fatherName || "",
-      entry.email || "",
-      entry.phone || "",
-      entry.course || "",
-      entry.aadhaar || "",
-      entry.address || "",
-      entry.dob || "",
-      entry.createdAt?.toDate?.().toLocaleDateString("en-IN") || "",
-    ]);
-
-    const allRows = [csvHeader, ...csvRows];
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      allRows
-        .map((row) =>
-          row.map((cell) => `"${(cell + "").replace(/"/g, '""')}"`).join(",")
-        )
-        .join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.href = encodedUri;
-    link.download = "enrollments.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  /* =========================
+     LOGOUT
+  ========================== */
+  const handleLogout = () => {
+    setAuthenticated(false);
+    setIsAdmin(false);
+    setEnrollments([]);
+    setStudentName("");
+    setStudentDob("");
+    setAdminEmail("");
+    setAdminPassword("");
+    toast.info("Logged out successfully");
   };
 
+  /* =========================
+     AUTH SCREEN
+  ========================== */
   if (!authenticated) {
     return (
       <>
@@ -221,8 +203,6 @@ const EnrollmentTable = () => {
           setStudentName={setStudentName}
           studentDob={studentDob}
           setStudentDob={setStudentDob}
-          studentEmail={studentEmail}
-          setStudentEmail={setStudentEmail}
           adminEmail={adminEmail}
           setAdminEmail={setAdminEmail}
           adminPassword={adminPassword}
@@ -234,31 +214,23 @@ const EnrollmentTable = () => {
     );
   }
 
+  /* =========================
+     MAIN UI
+  ========================== */
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <ToastContainer />
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {isAdmin ? "All Enrollment Records" : "Your Enrollment Record"}
-          </h1>
-        </div>
-        <div className="flex gap-2">
-          {isAdmin && (
-            <button
-              onClick={handleDownloadCSV}
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
-            >
-              Download CSV
-            </button>
-          )}
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white"
-          >
-            Logout
-          </button>
-        </div>
+
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">
+          {isAdmin ? "All Enrollment Records" : "Your Enrollment Record"}
+        </h1>
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+        >
+          Logout
+        </button>
       </div>
 
       {isAdmin && (
