@@ -10,6 +10,8 @@ const EnrollmentTableBody = ({
   handleUpdate,
   handleDelete,
   handleEdit,
+  setSelectedStudent,
+  setShowMarksModal,
 }) => {
   const formatDob = (dob) => {
     if (!dob) return "";
@@ -114,6 +116,15 @@ const EnrollmentTableBody = ({
                           className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
                         >
                           Delete
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(entry);
+                            setShowMarksModal(true);
+                          }}
+                          className="bg-green-600 px-2 py-1 rounded"
+                        >
+                          Upload Marks
                         </button>
                       </>
                     )}

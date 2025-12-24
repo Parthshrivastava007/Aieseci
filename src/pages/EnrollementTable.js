@@ -15,6 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import AccessCard from "../components/AccessCard";
 import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
+import ExamMarksModal from "../components/ExamMarksModal";
 
 const allowedAdminEmail = "aieseci.anpara@gmail.com";
 const allowedAdminPassword = "Aieseci@220471";
@@ -53,6 +54,10 @@ const EnrollmentTable = () => {
     address: "",
     dob: "",
   });
+
+  // Marks
+  const [showMarksModal, setShowMarksModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   /* =========================
      ACCESS HANDLER
@@ -259,7 +264,19 @@ const EnrollmentTable = () => {
           setEditId(entry.id);
           setEditData(entry);
         }}
+        setShowMarksModal={setShowMarksModal}
+        setSelectedStudent={setSelectedStudent}
       />
+
+      {showMarksModal && selectedStudent && (
+        <ExamMarksModal
+          student={selectedStudent}
+          onClose={() => {
+            setShowMarksModal(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
     </div>
   );
 };
