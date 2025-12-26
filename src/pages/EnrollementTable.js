@@ -146,6 +146,30 @@ const EnrollmentTable = () => {
     }
   };
 
+  const handleEdit = (entry) => {
+    setEditId(entry.id);
+    setEditData({
+      rollNo: entry.rollNo,
+      name: entry.name,
+      fatherName: entry.fatherName,
+      email: entry.email,
+      phone: entry.phone,
+      course: entry.course,
+      aadhaar: entry.aadhaar,
+      address: entry.address,
+      dob: entry.dob,
+    });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+
+    setEditData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   /* ================= FILTER DATA ================= */
   const courseOptions = Array.from(
     new Set(enrollments.map((e) => e.course))
@@ -229,6 +253,8 @@ const EnrollmentTable = () => {
         setEditData={setEditData}
         handleUpdate={handleUpdate}
         handleDelete={handleDelete}
+        handleEdit={handleEdit}
+        handleEditChange={handleEditChange}
         setShowMarksModal={setShowMarksModal}
         setSelectedStudent={setSelectedStudent}
       />
