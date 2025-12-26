@@ -5,38 +5,46 @@ import { toast } from "react-toastify";
 
 const ExamMarksModal = ({ student, onClose }) => {
   const [semester, setSemester] = useState("semester1");
-  const [marks, setMarks] = useState({
-    maths: "",
-    physics: "",
-    chemistry: "",
-  });
-
-  const handleChange = (e) => {
-    setMarks({ ...marks, [e.target.name]: e.target.value });
-  };
+  const [totalMarks, setTotalMarks] = useState("");
+  const [obtainedMarks, setObtainedMarks] = useState("");
 
   const handleSubmit = async () => {
-    await updateDoc(doc(db, "enrollments", student.id), {
-      [`marks.${semester}`]: {
-        maths: Number(marks.maths),
-        physics: Number(marks.physics),
-        chemistry: Number(marks.chemistry),
-      },
-    });
+    if (!totalMarks || !obtainedMarks) {
+      toast.error("Please fill all fields");
+      return;
+    }
 
-    toast.success("Marks uploaded");
-    onClose();
+    if (Number(obtainedMarks) > Number(totalMarks)) {
+      toast.error("Obtained marks cannot be greater than total marks");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "enrollments", student.id), {
+        [`marks.${semester}`]: {
+          totalMarks: Number(totalMarks),
+          obtainedMarks: Number(obtainedMarks),
+        },
+      });
+
+      toast.success("Marks uploaded successfully");
+      onClose();
+    } catch (error) {
+      toast.error("Failed to upload marks");
+      console.error(error);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center">
-      <div className="bg-gray-800 p-6 rounded w-80">
+      <div className="bg-gray-800 p-6 rounded w-80 text-white">
         <h2 className="text-xl font-bold mb-4">
           Upload Marks – {student.name}
         </h2>
 
+        {/* Semester Select */}
         <select
-          className="w-full mb-2 p-2 text-black"
+          className="w-full mb-3 p-2 text-black rounded"
           value={semester}
           onChange={(e) => setSemester(e.target.value)}
         >
@@ -44,23 +52,22 @@ const ExamMarksModal = ({ student, onClose }) => {
           <option value="semester2">Semester 2</option>
         </select>
 
+        {/* Total Marks */}
         <input
-          name="maths"
-          placeholder="Maths"
-          onChange={handleChange}
-          className="w-full mb-2 p-2 text-black"
+          type="number"
+          placeholder="Total Marks"
+          value={totalMarks}
+          onChange={(e) => setTotalMarks(e.target.value)}
+          className="w-full mb-3 p-2 text-black rounded"
         />
+
+        {/* Marks Obtained */}
         <input
-          name="physics"
-          placeholder="Physics"
-          onChange={handleChange}
-          className="w-full mb-2 p-2 text-black"
-        />
-        <input
-          name="chemistry"
-          placeholder="Chemistry"
-          onChange={handleChange}
-          className="w-full mb-4 p-2 text-black"
+          type="number"
+          placeholder="Marks Obtained"
+          value={obtainedMarks}
+          onChange={(e) => setObtainedMarks(e.target.value)}
+          className="w-full mb-4 p-2 text-black rounded"
         />
 
         <div className="flex justify-between">
