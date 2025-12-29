@@ -12,6 +12,7 @@ import {
 import { db } from "../Backend/firebase";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import * as XLSX from "xlsx";
 
 import AccessCard from "../components/AccessCard";
 import EnrollmentFilters from "../components/EnrollmentFilters";
@@ -186,6 +187,62 @@ const EnrollmentTable = () => {
       })
     : enrollments;
 
+  // Excel Download
+  const downloadExcel = async () => {
+    try {
+      // 🔥 Always fetch fresh data
+      const snapshot = await getDocs(collection(db, "enrollments"));
+      const freshData = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      if (!freshData.length) {
+        toast.error("No records available");
+        return;
+      }
+
+      const excelData = freshData.map((e) => ({
+        "Roll No": e.rollNo || "",
+        "Student Name": e.name || "",
+        "Father Name": e.fatherName || "",
+        DOB: e.dob || "",
+        Course: e.course || "",
+        Email: e.email || "",
+        Phone: e.phone || "",
+
+        // 🔽 MARKS (SAFE OPTIONAL CHAINING)
+        "Semester 1 Total": e.marks?.semester1?.totalMarks ?? "N/A",
+        "Semester 1 Obtained": e.marks?.semester1?.obtainedMarks ?? "N/A",
+
+        "Semester 2 Total": e.marks?.semester2?.totalMarks ?? "N/A",
+        "Semester 2 Obtained": e.marks?.semester2?.obtainedMarks ?? "N/A",
+
+        // 🔽 PASS / FAIL (OPTIONAL)
+        "Semester 1 Result": e.marks?.semester1
+          ? e.marks.semester1.obtainedMarks < e.marks.semester1.totalMarks * 0.3
+            ? "FAIL"
+            : "PASS"
+          : "N/A",
+
+        "Semester 2 Result": e.marks?.semester2
+          ? e.marks.semester2.obtainedMarks < e.marks.semester2.totalMarks * 0.3
+            ? "FAIL"
+            : "PASS"
+          : "N/A",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Enrollment Records");
+
+      XLSX.writeFile(workbook, "Enrollment_Records.xlsx");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to download Excel");
+    }
+  };
+
   /* ================= LOGOUT ================= */
   const handleLogout = () => {
     setAuthenticated(false);
@@ -228,10 +285,20 @@ const EnrollmentTable = () => {
         <h1 className="text-3xl font-bold">
           {isAdmin ? "All Enrollment Records" : "Student Dashboard"}
         </h1>
-
-        <button onClick={handleLogout} className="bg-red-600 px-4 py-2 rounded">
-          Logout
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={downloadExcel}
+            className="bg-blue-600 px-4 py-2 rounded"
+          >
+            Download Excel
+          </button>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 px-4 py-2 rounded"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {isAdmin && (
