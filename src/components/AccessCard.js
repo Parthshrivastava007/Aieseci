@@ -6,7 +6,7 @@ const AccessCard = ({
   studentName,
   setStudentName,
   studentDob,
-  setStudentDob,
+  setStudentRollNumber,
   adminEmail,
   setAdminEmail,
   adminPassword,
@@ -28,6 +28,7 @@ const AccessCard = ({
         {/* Student Card */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-bold mb-4">Student Access</h2>
+
           <label className="block mb-1 font-semibold text-sm">Full Name</label>
           <input
             type="text"
@@ -36,16 +37,25 @@ const AccessCard = ({
             placeholder="Enter your name"
             className="p-2 text-black rounded mb-4 w-full"
           />
+
           <label className="block mb-1 font-semibold text-sm">
-            Date of Birth
+            Roll Number
           </label>
-          <input
-            type="date"
-            value={studentDob}
-            onChange={(e) => setStudentDob(e.target.value)}
-            className="p-2 text-black rounded mb-4 w-full"
-            autoFocus
-          />
+
+          <div className="flex mb-4">
+            <span className="bg-gray-300 text-black px-3 py-2 rounded-l">
+              AFT-
+            </span>
+            <input
+              type="text"
+              value={studentDob}
+              onChange={(e) => setStudentRollNumber(e.target.value)}
+              placeholder="Enter roll number"
+              className="p-2 text-black rounded-r w-full"
+              autoFocus
+            />
+          </div>
+
           <button
             onClick={() => handleAccess("student")}
             className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white w-full"

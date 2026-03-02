@@ -26,7 +26,7 @@ const allowedAdminPassword = "Aieseci@220471";
 const EnrollmentTable = () => {
   /* ================= STUDENT ================= */
   const [studentName, setStudentName] = useState("");
-  const [studentDob, setStudentDob] = useState("");
+  const [studentRollNumber, setStudentRollNumber] = useState("");
 
   /* ================= ADMIN ================= */
   const [adminEmail, setAdminEmail] = useState("");
@@ -80,7 +80,7 @@ const EnrollmentTable = () => {
       const q = query(
         collection(db, "enrollments"),
         where("name", "==", studentName.trim()),
-        where("dob", "==", studentDob)
+        where("rollNo", "==", `AFT-${studentRollNumber.trim()}`),
       );
 
       const snapshot = await getDocs(q);
@@ -173,7 +173,7 @@ const EnrollmentTable = () => {
 
   /* ================= FILTER DATA ================= */
   const courseOptions = Array.from(
-    new Set(enrollments.map((e) => e.course))
+    new Set(enrollments.map((e) => e.course)),
   ).filter(Boolean);
 
   const filteredEnrollments = isAdmin
@@ -249,7 +249,7 @@ const EnrollmentTable = () => {
     setIsAdmin(false);
     setEnrollments([]);
     setStudentName("");
-    setStudentDob("");
+    setStudentRollNumber("");
     setAdminEmail("");
     setAdminPassword("");
     toast.info("Logged out successfully");
@@ -263,8 +263,8 @@ const EnrollmentTable = () => {
         <AccessCard
           studentName={studentName}
           setStudentName={setStudentName}
-          studentDob={studentDob}
-          setStudentDob={setStudentDob}
+          studentRollNumber={studentRollNumber}
+          setStudentRollNumber={setStudentRollNumber}
           adminEmail={adminEmail}
           setAdminEmail={setAdminEmail}
           adminPassword={adminPassword}
