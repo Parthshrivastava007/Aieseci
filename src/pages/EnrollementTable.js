@@ -77,16 +77,28 @@ const EnrollmentTable = () => {
 
     // -------- STUDENT --------
     try {
-      const q = query(
+      const formattedRoll = `AFT-${studentRollNumber}`
+        .replace(/\s+/g, "")
+        .toUpperCase();
+
+      let q = query(
         collection(db, "enrollments"),
-        where("name", "==", studentName.trim()),
-        where("rollNo", "==", `AFT-${studentRollNumber.trim()}`),
+        where("rollNo", "==", formattedRoll),
       );
 
-      const snapshot = await getDocs(q);
+      let snapshot = await getDocs(q);
+
+      // 🔥 fallback for old data (without AFT)
+      if (snapshot.empty) {
+        q = query(
+          collection(db, "enrollments"),
+          where("rollNo", "==", studentRollNumber.trim()),
+        );
+
+        snapshot = await getDocs(q);
+      }
 
       if (snapshot.empty) {
-        setErrorMessage("Student not found");
         toast.error("Student not found");
         return;
       }
