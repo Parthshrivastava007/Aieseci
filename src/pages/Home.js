@@ -1,8 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
 import image1 from "../assets/Images/image1.jpg";
 import image2 from "../assets/Images/image2.jpg";
 import image3 from "../assets/Images/image3.jpg";

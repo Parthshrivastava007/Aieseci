@@ -93,23 +93,23 @@ const About = () => {
   };
 
   // Custom hook for scroll animations
-  const ScrollAnimation = ({ children, delay = 0 }) => {
-    const [ref, inView] = useInView({
-      triggerOnce: true,
-      threshold: 0.1,
-    });
+  // const ScrollAnimation = ({ children, delay = 0 }) => {
+  //   const [ref, inView] = useInView({
+  //     triggerOnce: true,
+  //     threshold: 0.1,
+  //   });
 
-    return (
-      <motion.div
-        ref={ref}
-        initial={{ opacity: 0, y: 50 }}
-        animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-        transition={{ duration: 0.6, delay }}
-      >
-        {children}
-      </motion.div>
-    );
-  };
+  //   return (
+  //     <motion.div
+  //       ref={ref}
+  //       initial={{ opacity: 0, y: 50 }}
+  //       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+  //       transition={{ duration: 0.6, delay }}
+  //     >
+  //       {children}
+  //     </motion.div>
+  //   );
+  // };
 
   return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white min-h-screen overflow-hidden">
