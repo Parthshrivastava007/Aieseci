@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import {
   FaEye,
@@ -25,7 +25,7 @@ const AccessCard = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [focusedField, setFocusedField] = useState(null);
+  const [setFocusedField] = useState(null);
 
   useEffect(() => {
     if (errorMessage) {
@@ -157,17 +157,17 @@ const AccessCard = ({
     },
   };
 
-  const pulseAnimation = {
-    initial: { scale: 1 },
-    animate: {
-      scale: [1, 1.05, 1],
-      transition: {
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut",
-      },
-    },
-  };
+  // const pulseAnimation = {
+  //   initial: { scale: 1 },
+  //   animate: {
+  //     scale: [1, 1.05, 1],
+  //     transition: {
+  //       duration: 2,
+  //       repeat: Infinity,
+  //       ease: "easeInOut",
+  //     },
+  //   },
+  // };
 
   const gradientAnimation = {
     initial: { backgroundPosition: "0% 50%" },
