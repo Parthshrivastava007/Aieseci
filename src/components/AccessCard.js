@@ -25,7 +25,7 @@ const AccessCard = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [foucsedField ,setFocusedField] = useState(null);
+  const [foucsedField, setFocusedField] = useState(null); // eslint-disable-line
 
   useEffect(() => {
     if (errorMessage) {

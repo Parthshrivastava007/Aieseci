@@ -7,7 +7,6 @@ import {
   HiOutlineMail,
   HiOutlineHeart,
   HiOutlineChat,
-  HiOutlineUser,
   HiOutlineDeviceMobile,
   HiOutlinePaperAirplane,
   HiOutlineX,
@@ -15,7 +14,7 @@ import {
   HiOutlineClock,
   HiOutlineAcademicCap,
 } from "react-icons/hi";
-import { FaInstagram, FaWhatsapp, FaFacebook, FaYoutube } from "react-icons/fa";
+import { FaInstagram } from "react-icons/fa";
 import { MdOutlineSend } from "react-icons/md";
 
 const Contact = () => {
@@ -30,7 +29,7 @@ const Contact = () => {
     message: "",
   });
   const formRef = useRef(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 }); // eslint-disable-line
   const [selectedSubject, setSelectedSubject] = useState("general");
 
   useEffect(() => {
@@ -230,7 +229,12 @@ const Contact = () => {
     {
       icon: HiOutlinePhone,
       title: "Call Us",
-      details: ["+91 99196 70620", "+91 76519 25552", "+91 94153 91502"],
+      details: [
+        "+91 99196 70620",
+        "+91 76519 25552",
+        "+91 94153 91502",
+        "+91 91253 60702",
+      ],
       color: "from-green-400 to-green-600",
       bgColor: "bg-green-500/10",
       iconColor: "text-green-400",
@@ -259,24 +263,6 @@ const Contact = () => {
       href: "https://www.instagram.com/aieseci_computer",
       label: "Instagram",
       color: "hover:text-pink-400",
-    },
-    {
-      icon: FaWhatsapp,
-      href: "https://wa.me/919919670620",
-      label: "WhatsApp",
-      color: "hover:text-green-400",
-    },
-    {
-      icon: FaFacebook,
-      href: "#",
-      label: "Facebook",
-      color: "hover:text-blue-400",
-    },
-    {
-      icon: FaYoutube,
-      href: "#",
-      label: "YouTube",
-      color: "hover:text-red-400",
     },
   ];
 
@@ -476,71 +462,6 @@ const Contact = () => {
             </h2>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  {
-                    icon: HiOutlineUser,
-                    placeholder: "Your Name",
-                    field: "name",
-                  },
-                  {
-                    icon: HiOutlineMail,
-                    placeholder: "Email Address",
-                    field: "email",
-                    type: "email",
-                  },
-                ].map((field) => (
-                  <motion.div
-                    key={field.field}
-                    className="relative"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <field.icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-                    <input
-                      type={field.type || "text"}
-                      placeholder={field.placeholder}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                      value={formData[field.field]}
-                      onChange={handleInputChange}
-                      name={field.field}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-
-              <motion.div
-                className="relative"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <HiOutlineDeviceMobile className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-                <input
-                  type="tel"
-                  placeholder="Mobile Number"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                  value={formData.mobile}
-                  onChange={handleInputChange}
-                  name="mobile"
-                />
-              </motion.div>
-
-              <motion.div
-                className="relative"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <HiOutlineChat className="absolute left-3 top-4 text-gray-500" />
-                <textarea
-                  placeholder="Your Message"
-                  rows="4"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 resize-none"
-                  value={formData.message}
-                  onChange={handleInputChange}
-                  name="message"
-                />
-              </motion.div>
-
               <motion.button
                 onClick={toggleModal}
                 className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-xl flex items-center justify-center space-x-2 group"
