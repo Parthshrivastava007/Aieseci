@@ -5,14 +5,10 @@ import {
   HiOutlineLocationMarker,
   HiOutlinePhone,
   HiOutlineMail,
-  HiOutlineHeart,
-  HiOutlineChat,
-  HiOutlineDeviceMobile,
   HiOutlinePaperAirplane,
   HiOutlineX,
   HiOutlineCheckCircle,
   HiOutlineClock,
-  HiOutlineAcademicCap,
 } from "react-icons/hi";
 import { FaInstagram } from "react-icons/fa";
 import { MdOutlineSend } from "react-icons/md";
@@ -30,7 +26,6 @@ const Contact = () => {
   });
   const formRef = useRef(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 }); // eslint-disable-line
-  const [selectedSubject, setSelectedSubject] = useState("general");
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -264,17 +259,6 @@ const Contact = () => {
       label: "Instagram",
       color: "hover:text-pink-400",
     },
-  ];
-
-  const querySubjects = [
-    { value: "general", label: "General Inquiry", icon: HiOutlineChat },
-    { value: "admission", label: "Admission", icon: HiOutlineAcademicCap },
-    {
-      value: "technical",
-      label: "Technical Support",
-      icon: HiOutlineDeviceMobile,
-    },
-    { value: "feedback", label: "Feedback", icon: HiOutlineHeart },
   ];
 
   return (
@@ -597,46 +581,6 @@ const Contact = () => {
                   name="_next"
                   value="https://aiesecianpara.netlify.app/"
                 />
-
-                {/* Subject Selection */}
-                <div className="mb-6">
-                  <label className="block text-gray-300 font-semibold mb-3">
-                    Select Subject
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {querySubjects.map((subject) => (
-                      <motion.button
-                        key={subject.value}
-                        type="button"
-                        onClick={() => setSelectedSubject(subject.value)}
-                        className={`p-3 rounded-xl border flex items-center space-x-2 transition-all duration-300 ${
-                          selectedSubject === subject.value
-                            ? "border-blue-400 bg-blue-500/20"
-                            : "border-gray-700 bg-gray-700/30 hover:border-gray-600"
-                        }`}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <subject.icon
-                          className={`text-xl ${
-                            selectedSubject === subject.value
-                              ? "text-blue-400"
-                              : "text-gray-400"
-                          }`}
-                        />
-                        <span
-                          className={`text-sm ${
-                            selectedSubject === subject.value
-                              ? "text-white"
-                              : "text-gray-400"
-                          }`}
-                        >
-                          {subject.label}
-                        </span>
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
