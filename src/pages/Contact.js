@@ -1,16 +1,69 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
+import {
+  HiOutlineLocationMarker,
+  HiOutlinePhone,
+  HiOutlineMail,
+  HiOutlineHeart,
+  HiOutlineChat,
+  HiOutlineUser,
+  HiOutlineDeviceMobile,
+  HiOutlineIdentification,
+  HiOutlinePaperAirplane,
+  HiOutlineX,
+  HiOutlineCheckCircle,
+  HiOutlineClock,
+  HiOutlineAcademicCap,
+} from "react-icons/hi";
+import { FaInstagram, FaWhatsapp, FaFacebook, FaYoutube } from "react-icons/fa";
+import { MdOutlineSend } from "react-icons/md";
 
 const Contact = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [activeField, setActiveField] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    rollnumber: "",
+    message: "",
+  });
   const formRef = useRef(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [selectedSubject, setSelectedSubject] = useState("general");
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   const toggleModal = () => {
     setIsModalOpen(!isModalOpen);
     setIsLoading(false);
     setEmailError("");
+    if (!isModalOpen) {
+      setFormData({
+        name: "",
+        email: "",
+        mobile: "",
+        rollnumber: "",
+        message: "",
+      });
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const isValidEmail = (email) => {
@@ -20,11 +73,8 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const form = formRef.current;
-    const formData = new FormData(form);
-    const email = formData.get("email");
 
-    if (!isValidEmail(email)) {
+    if (!isValidEmail(formData.email)) {
       setEmailError("Please enter a valid email address.");
       return;
     } else {
@@ -41,223 +91,766 @@ const Contact = () => {
           headers: {
             Accept: "application/json",
           },
-          body: formData,
-        }
+          body: new FormData(formRef.current),
+        },
       );
 
       if (response.ok) {
         setIsLoading(false);
-        form.reset();
+        formRef.current.reset();
+        setFormData({
+          name: "",
+          email: "",
+          mobile: "",
+          rollnumber: "",
+          message: "",
+        });
         toggleModal();
-        toast.success("Message sent successfully!");
+        toast.success(
+          <div className="flex items-center space-x-3">
+            <HiOutlineCheckCircle className="text-2xl text-green-400" />
+            <div>
+              <p className="font-semibold">Message Sent!</p>
+              <p className="text-sm text-gray-400">
+                We'll get back to you soon
+              </p>
+            </div>
+          </div>,
+          {
+            style: {
+              background: "#1f2937",
+              color: "#fff",
+              border: "1px solid #10b981",
+              borderRadius: "12px",
+            },
+            duration: 4000,
+          },
+        );
       } else {
         throw new Error("Failed to send");
       }
     } catch (error) {
       console.error("Submission error:", error);
       setIsLoading(false);
-      toast.error("Failed to send message. Try again.");
+      toast.error("Failed to send message. Try again.", {
+        style: {
+          background: "#1f2937",
+          color: "#fff",
+          border: "1px solid #ef4444",
+          borderRadius: "12px",
+        },
+      });
     }
   };
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  };
+
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 15,
+      },
+    },
+  };
+
+  const scaleIn = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 200,
+        damping: 20,
+      },
+    },
+  };
+
+  const slideInLeft = {
+    hidden: { opacity: 0, x: -50 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 15,
+      },
+    },
+  };
+
+  const slideInRight = {
+    hidden: { opacity: 0, x: 50 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 15,
+      },
+    },
+  };
+
+  const floatAnimation = {
+    initial: { y: 0 },
+    animate: {
+      y: [-10, 10, -10],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        ease: "easeInOut",
+      },
+    },
+  };
+
+  const pulseAnimation = {
+    initial: { scale: 1, opacity: 0.5 },
+    animate: {
+      scale: [1, 1.2, 1],
+      opacity: [0.5, 0.8, 0.5],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut",
+      },
+    },
+  };
+
+  const contactInfo = [
+    {
+      icon: HiOutlineLocationMarker,
+      title: "Visit Us",
+      details: ["Anpara, Sonbhadra", "Uttar Pradesh, India"],
+      color: "from-blue-400 to-blue-600",
+      bgColor: "bg-blue-500/10",
+      iconColor: "text-blue-400",
+    },
+    {
+      icon: HiOutlinePhone,
+      title: "Call Us",
+      details: ["+91 99196 70620", "+91 76519 25552", "+91 94153 91502"],
+      color: "from-green-400 to-green-600",
+      bgColor: "bg-green-500/10",
+      iconColor: "text-green-400",
+    },
+    {
+      icon: HiOutlineMail,
+      title: "Email Us",
+      details: ["aieseci.anpara@gmail.com"],
+      color: "from-purple-400 to-purple-600",
+      bgColor: "bg-purple-500/10",
+      iconColor: "text-purple-400",
+    },
+    {
+      icon: HiOutlineClock,
+      title: "Working Hours",
+      details: ["Mon - Sat: 9:00 AM - 7:00 PM", "Sunday: Closed"],
+      color: "from-orange-400 to-orange-600",
+      bgColor: "bg-orange-500/10",
+      iconColor: "text-orange-400",
+    },
+  ];
+
+  const socialLinks = [
+    {
+      icon: FaInstagram,
+      href: "https://www.instagram.com/aieseci_computer",
+      label: "Instagram",
+      color: "hover:text-pink-400",
+    },
+    {
+      icon: FaWhatsapp,
+      href: "https://wa.me/919919670620",
+      label: "WhatsApp",
+      color: "hover:text-green-400",
+    },
+    {
+      icon: FaFacebook,
+      href: "#",
+      label: "Facebook",
+      color: "hover:text-blue-400",
+    },
+    {
+      icon: FaYoutube,
+      href: "#",
+      label: "YouTube",
+      color: "hover:text-red-400",
+    },
+  ];
+
+  const querySubjects = [
+    { value: "general", label: "General Inquiry", icon: HiOutlineChat },
+    { value: "admission", label: "Admission", icon: HiOutlineAcademicCap },
+    {
+      value: "technical",
+      label: "Technical Support",
+      icon: HiOutlineDeviceMobile,
+    },
+    { value: "feedback", label: "Feedback", icon: HiOutlineHeart },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center px-4 py-8 md:px-8 animate__animated animate__fadeIn">
-      <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 bg-white shadow-lg rounded-lg overflow-hidden">
-        {/* Left Section */}
-        <div className="p-8 bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex flex-col justify-center hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:translate-y-2 hover:opacity-90">
-          <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 text-yellow-300 animate__animated animate__fadeIn animate__delay-1s">
-            Contact Us
-          </h1>
-          <p className="text-lg mb-6 space-y-1">
-            <span className="font-semibold text-yellow-400">Location:</span>{" "}
-            Anpara, Sonbhadra, Uttar Pradesh <br />
-            <span className="font-semibold text-yellow-400">Phone:</span>{" "}
-            +91-9919670620, +91-7651925552, +91-9415391502 <br />
-            <span className="font-semibold text-yellow-400">Email:</span>{" "}
-            aieseci.anpara@gmail.com <br />
-            <span className="font-semibold text-yellow-400">
-              Instagram:
-            </span>{" "}
-            <a
-              href="https://www.instagram.com/aieseci_computer?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
-              rel="noopener noreferrer"
-              className="underline hover:text-yellow-300 transition duration-300"
-            >
-              @aieseci_anpara
-            </a>
-          </p>
+    <motion.div
+      className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8 }}
+    >
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Gradient Orbs */}
+        <motion.div
+          className="absolute top-20 left-20 w-96 h-96 bg-blue-500/20 rounded-full filter blur-3xl"
+          animate={{
+            x: [0, 100, 0],
+            y: [0, 50, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full filter blur-3xl"
+          animate={{
+            x: [0, -100, 0],
+            y: [0, -50, 0],
+            scale: [1, 1.3, 1],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/3 w-64 h-64 bg-pink-500/20 rounded-full filter blur-3xl"
+          animate={{
+            scale: [1, 1.4, 1],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
 
-          <button
-            className="bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-6 rounded-md text-lg font-semibold transition duration-300 transform hover:scale-110 shadow-md hover:shadow-xl"
-            onClick={toggleModal}
+        {/* Grid Pattern */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)`,
+            backgroundSize: "40px 40px",
+          }}
+        />
+
+        {/* Floating Particles */}
+        {[...Array(50)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-blue-400/30 rounded-full"
+            initial={{
+              x:
+                Math.random() *
+                (typeof window !== "undefined" ? window.innerWidth : 1000),
+              y:
+                Math.random() *
+                (typeof window !== "undefined" ? window.innerHeight : 1000),
+            }}
+            animate={{
+              x:
+                Math.random() *
+                (typeof window !== "undefined" ? window.innerWidth : 1000),
+              y:
+                Math.random() *
+                (typeof window !== "undefined" ? window.innerHeight : 1000),
+              scale: [0, 1, 0],
+              opacity: [0, 0.5, 0],
+            }}
+            transition={{
+              duration: Math.random() * 15 + 10,
+              repeat: Infinity,
+              ease: "linear",
+              delay: Math.random() * 5,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 container mx-auto px-4 py-16">
+        {/* Header */}
+        <motion.div
+          className="text-center mb-16"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div variants={fadeInUp} className="inline-block">
+            <span className="px-4 py-2 bg-blue-500/10 rounded-full text-blue-400 text-sm font-semibold mb-4 inline-block">
+              Get in Touch
+            </span>
+          </motion.div>
+
+          <motion.h1
+            variants={fadeInUp}
+            className="text-5xl md:text-6xl font-bold mb-4"
           >
-            Get in Touch
-          </button>
-        </div>
+            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Let's Connect
+            </span>
+          </motion.h1>
 
-        {/* Right Section: Map */}
-        <div className="relative w-full h-80 sm:h-96 shadow-md rounded-lg overflow-hidden transition-transform duration-500 transform hover:scale-105 hover:shadow-xl hover:translate-y-4">
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d29114.592912892836!2d82.75925439264869!3d24.19542564296271!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398f253a3cedbf09%3A0x6df8402aa1b510d5!2sAIESECI%20COMPUTER!5e0!3m2!1sen!2sin!4v1732431368946!5m2!1sen!2sin"
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="AIESECI Computer Location"
-          ></iframe>
-        </div>
+          <motion.p
+            variants={fadeInUp}
+            className="text-gray-400 text-lg max-w-2xl mx-auto"
+          >
+            Have questions? We'd love to hear from you. Send us a message and
+            we'll respond as soon as possible.
+          </motion.p>
+        </motion.div>
+
+        {/* Contact Cards Grid */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {contactInfo.map((info, index) => (
+            <motion.div
+              key={info.title}
+              variants={scaleIn}
+              whileHover={{
+                y: -5,
+                transition: { type: "spring", stiffness: 300 },
+              }}
+              className="group relative"
+            >
+              <div
+                className={`absolute inset-0 bg-gradient-to-r ${info.color} rounded-2xl opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500`}
+              />
+
+              <div className="relative bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 hover:border-gray-600 transition-all duration-300">
+                <div
+                  className={`w-14 h-14 ${info.bgColor} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+                >
+                  <info.icon className={`text-2xl ${info.iconColor}`} />
+                </div>
+
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {info.title}
+                </h3>
+
+                <div className="space-y-1">
+                  {info.details.map((detail, i) => (
+                    <p key={i} className="text-gray-400 text-sm">
+                      {detail}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Main Contact Section */}
+        <motion.div
+          className="grid lg:grid-cols-2 gap-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Left Column - Contact Form Preview */}
+          <motion.div
+            variants={slideInLeft}
+            className="bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700 p-8"
+          >
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Send a Message
+            </h2>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  {
+                    icon: HiOutlineUser,
+                    placeholder: "Your Name",
+                    field: "name",
+                  },
+                  {
+                    icon: HiOutlineMail,
+                    placeholder: "Email Address",
+                    field: "email",
+                    type: "email",
+                  },
+                ].map((field) => (
+                  <motion.div
+                    key={field.field}
+                    className="relative"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <field.icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                    <input
+                      type={field.type || "text"}
+                      placeholder={field.placeholder}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                      value={formData[field.field]}
+                      onChange={handleInputChange}
+                      name={field.field}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+
+              <motion.div
+                className="relative"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <HiOutlineDeviceMobile className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                <input
+                  type="tel"
+                  placeholder="Mobile Number"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                  value={formData.mobile}
+                  onChange={handleInputChange}
+                  name="mobile"
+                />
+              </motion.div>
+
+              <motion.div
+                className="relative"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <HiOutlineChat className="absolute left-3 top-4 text-gray-500" />
+                <textarea
+                  placeholder="Your Message"
+                  rows="4"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 resize-none"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  name="message"
+                />
+              </motion.div>
+
+              <motion.button
+                onClick={toggleModal}
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-xl flex items-center justify-center space-x-2 group"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span>Open Contact Form</span>
+                <MdOutlineSend className="group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Right Column - Map & Social */}
+          <motion.div variants={slideInRight} className="space-y-6">
+            {/* Map */}
+            <motion.div
+              className="bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700 p-4 h-64 relative overflow-hidden group"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d29114.592912892836!2d82.75925439264869!3d24.19542564296271!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398f253a3cedbf09%3A0x6df8402aa1b510d5!2sAIESECI%20COMPUTER!5e0!3m2!1sen!2sin!4v1732431368946!5m2!1sen!2sin"
+                width="100%"
+                height="100%"
+                style={{ border: 0, borderRadius: "1rem" }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="AIESECI Computer Location"
+                className="w-full h-full"
+              />
+
+              <motion.div
+                className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <HiOutlineLocationMarker className="text-red-400" />
+                <span className="text-sm">AIESECI Computer Institute</span>
+              </motion.div>
+            </motion.div>
+
+            {/* Social Links */}
+            <motion.div
+              className="bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700 p-6"
+              variants={fadeInUp}
+            >
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Connect With Us
+              </h3>
+
+              <div className="flex space-x-4">
+                {socialLinks.map((social) => (
+                  <motion.a
+                    key={social.label}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`w-12 h-12 bg-gray-700/50 rounded-xl flex items-center justify-center text-gray-400 ${social.color} transition-colors duration-300`}
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <social.icon className="text-xl" />
+                  </motion.a>
+                ))}
+              </div>
+
+              <motion.p
+                className="text-gray-500 text-sm mt-4"
+                animate={pulseAnimation}
+              >
+                ⚡ Usually replies within an hour
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50 animate__animated animate__fadeIn">
-          <div className="bg-white p-8 rounded-lg w-full sm:w-96 transform transition-all duration-500 animate__animated animate__zoomIn">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">
-              Send Your Query
-            </h2>
-            <form
-              ref={formRef}
-              onSubmit={handleSubmit}
-              className="flex flex-col space-y-4"
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Backdrop */}
+            <motion.div
+              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              onClick={toggleModal}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+
+            {/* Modal Content */}
+            <motion.div
+              className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-700 w-full max-w-2xl"
+              initial={{ scale: 0.9, y: 50, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 50, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              {/* Hidden Inputs */}
-              <input type="hidden" name="_captcha" value="false" />
-              <input type="hidden" name="_template" value="table" />
-              <input
-                type="hidden"
-                name="_next"
-                value="https://aiesecianpara.netlify.app/"
-              />
+              {/* Modal Header */}
+              <div className="relative p-6 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-b border-gray-700">
+                <h2 className="text-2xl font-bold text-white">
+                  Send Your Query
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  We'll get back to you within 24 hours
+                </p>
 
-              <div className="flex flex-col">
-                <label htmlFor="name" className="text-gray-600 font-semibold">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col">
-                <label htmlFor="email" className="text-gray-600 font-semibold">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                {emailError && (
-                  <p className="text-red-500 text-sm mt-1">{emailError}</p>
-                )}
-              </div>
-
-              <div className="flex flex-col">
-                <label htmlFor="mobile" className="text-gray-600 font-semibold">
-                  Mobile Number
-                </label>
-                <input
-                  type="tel"
-                  id="mobile"
-                  name="mobile"
-                  className="p-2 border border-gray-300 rounded-md"
-                  pattern="[0-9]{10}"
-                  placeholder="Enter 10-digit mobile"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col">
-                <label
-                  htmlFor="rollnumber"
-                  className="text-gray-600 font-semibold"
-                >
-                  Institute Roll Number (Optional)
-                </label>
-                <input
-                  type="text"
-                  id="rollnumber"
-                  name="rollnumber"
-                  className="p-2 border border-gray-300 rounded-md"
-                  placeholder="e.g. AFT-000"
-                />
-              </div>
-
-              <div className="flex flex-col">
-                <label
-                  htmlFor="message"
-                  className="text-gray-600 font-semibold"
-                >
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows="4"
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                ></textarea>
-              </div>
-
-              <div className="flex justify-between items-center mt-4">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className={`${
-                    isLoading
-                      ? "bg-yellow-300 cursor-not-allowed"
-                      : "bg-yellow-500 hover:bg-yellow-600"
-                  } text-black py-2 px-6 rounded-md text-lg font-semibold flex items-center justify-center`}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5 mr-2 text-black"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8H4z"
-                        ></path>
-                      </svg>
-                      Sending...
-                    </>
-                  ) : (
-                    "Send Message"
-                  )}
-                </button>
-                <button
-                  type="button"
+                <motion.button
+                  className="absolute top-6 right-6 w-10 h-10 bg-gray-700/50 hover:bg-red-500/20 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-400 transition-all duration-300"
                   onClick={toggleModal}
-                  className="text-red-500 hover:text-red-600 font-semibold"
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
                 >
-                  Close
-                </button>
+                  <HiOutlineX className="text-xl" />
+                </motion.button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+
+              {/* Modal Body */}
+              <form ref={formRef} onSubmit={handleSubmit} className="p-6">
+                <input type="hidden" name="_captcha" value="false" />
+                <input type="hidden" name="_template" value="table" />
+                <input
+                  type="hidden"
+                  name="_next"
+                  value="https://aiesecianpara.netlify.app/"
+                />
+
+                {/* Subject Selection */}
+                <div className="mb-6">
+                  <label className="block text-gray-300 font-semibold mb-3">
+                    Select Subject
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {querySubjects.map((subject) => (
+                      <motion.button
+                        key={subject.value}
+                        type="button"
+                        onClick={() => setSelectedSubject(subject.value)}
+                        className={`p-3 rounded-xl border flex items-center space-x-2 transition-all duration-300 ${
+                          selectedSubject === subject.value
+                            ? "border-blue-400 bg-blue-500/20"
+                            : "border-gray-700 bg-gray-700/30 hover:border-gray-600"
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <subject.icon
+                          className={`text-xl ${
+                            selectedSubject === subject.value
+                              ? "text-blue-400"
+                              : "text-gray-400"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm ${
+                            selectedSubject === subject.value
+                              ? "text-white"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {subject.label}
+                        </span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-gray-300 font-semibold mb-2">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 font-semibold mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className={`w-full p-3 bg-gray-700/50 border rounded-xl text-white focus:outline-none focus:ring-2 transition-all duration-300 ${
+                        emailError
+                          ? "border-red-400 focus:ring-red-400/20"
+                          : "border-gray-600 focus:border-blue-400 focus:ring-blue-400/20"
+                      }`}
+                      placeholder="john@example.com"
+                    />
+                    {emailError && (
+                      <p className="text-red-400 text-sm mt-1">{emailError}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-gray-300 font-semibold mb-2">
+                      Mobile Number *
+                    </label>
+                    <input
+                      type="tel"
+                      name="mobile"
+                      required
+                      value={formData.mobile}
+                      onChange={handleInputChange}
+                      pattern="[0-9]{10}"
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                      placeholder="9876543210"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 font-semibold mb-2">
+                      Roll Number (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      name="rollnumber"
+                      value={formData.rollnumber}
+                      onChange={handleInputChange}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                      placeholder="AFT-000"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-gray-300 font-semibold mb-2">
+                    Message *
+                  </label>
+                  <textarea
+                    name="message"
+                    required
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    rows="4"
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 resize-none"
+                    placeholder="Write your message here..."
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <motion.button
+                    type="button"
+                    onClick={toggleModal}
+                    className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-semibold transition-colors duration-300"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={!isLoading ? { scale: 1.02 } : {}}
+                    whileTap={!isLoading ? { scale: 0.98 } : {}}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Send Message</span>
+                        <HiOutlinePaperAirplane />
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
