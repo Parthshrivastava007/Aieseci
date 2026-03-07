@@ -9,7 +9,6 @@ import {
   HiOutlineChat,
   HiOutlineUser,
   HiOutlineDeviceMobile,
-  HiOutlineIdentification,
   HiOutlinePaperAirplane,
   HiOutlineX,
   HiOutlineCheckCircle,
@@ -23,7 +22,6 @@ const Contact = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [activeField, setActiveField] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -203,18 +201,6 @@ const Contact = () => {
         type: "spring",
         stiffness: 100,
         damping: 15,
-      },
-    },
-  };
-
-  const floatAnimation = {
-    initial: { y: 0 },
-    animate: {
-      y: [-10, 10, -10],
-      transition: {
-        duration: 3,
-        repeat: Infinity,
-        ease: "easeInOut",
       },
     },
   };
