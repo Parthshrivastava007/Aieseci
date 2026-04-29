@@ -51,7 +51,7 @@ const ExamMarksModal = ({ student, onClose }) => {
   // 🔹 Delete Marks
   const handleDelete = async () => {
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${semester} marks?`
+      `Are you sure you want to delete ${semester} marks?`,
     );
     if (!confirmDelete) return;
 
@@ -59,7 +59,7 @@ const ExamMarksModal = ({ student, onClose }) => {
       await updateDoc(doc(db, "enrollments", student.id), {
         [`marks.${semester}`]: deleteField(),
       });
-
+    
       toast.success("Marks deleted successfully");
       onClose();
     } catch (error) {

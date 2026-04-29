@@ -183,7 +183,7 @@ const AccessCard = ({
 
   return (
     <motion.div
-      className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex items-center justify-center p-6 relative overflow-hidden"
+      className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
@@ -261,7 +261,7 @@ const AccessCard = ({
       </div>
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl relative z-10"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 w-full max-w-5xl relative z-10"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -282,7 +282,7 @@ const AccessCard = ({
             }
           />
 
-          <div className="relative bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl border border-gray-700 group-hover:border-blue-400/50 transition-all duration-300 overflow-hidden">
+          <div className="relative bg-gray-800/50 backdrop-blur-sm p-6 sm:p-8 rounded-xl border border-gray-700 group-hover:border-blue-400/50 transition-all duration-300 overflow-hidden">
             {/* Shine Effect */}
             <motion.div
               className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
@@ -314,7 +314,7 @@ const AccessCard = ({
                 <FaUserGraduate className="text-blue-400 text-2xl" />
               </motion.div>
               <motion.h2
-                className="text-2xl font-bold"
+                className="text-xl sm:text-2xl font-bold"
                 variants={gradientAnimation}
                 initial="initial"
                 animate="animate"
@@ -440,7 +440,7 @@ const AccessCard = ({
             }
           />
 
-          <div className="relative bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl border border-gray-700 group-hover:border-green-400/50 transition-all duration-300 overflow-hidden">
+          <div className="relative bg-gray-800/50 backdrop-blur-sm p-6 sm:p-8 rounded-xl border border-gray-700 group-hover:border-green-400/50 transition-all duration-300 overflow-hidden">
             {/* Shine Effect */}
             <motion.div
               className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
@@ -472,7 +472,7 @@ const AccessCard = ({
                 <FaUserCog className="text-green-400 text-2xl" />
               </motion.div>
               <motion.h2
-                className="text-2xl font-bold"
+                className="text-xl sm:text-2xl font-bold"
                 variants={gradientAnimation}
                 initial="initial"
                 animate="animate"

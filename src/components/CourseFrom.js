@@ -73,6 +73,12 @@ const CourseForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (currentStep < 3) {
+      nextStep();
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -434,6 +440,11 @@ const CourseForm = () => {
           {/* Form */}
           <motion.form
             onSubmit={handleSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+              }
+            }}
             variants={formVariants}
             className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700 p-8 shadow-2xl"
           >
@@ -738,6 +749,7 @@ const CourseForm = () => {
 
               {currentStep < 3 ? (
                 <motion.button
+                  key="next-btn"
                   type="button"
                   onClick={nextStep}
                   variants={buttonVariants}
@@ -750,6 +762,7 @@ const CourseForm = () => {
                 </motion.button>
               ) : (
                 <motion.button
+                  key="submit-btn"
                   type="submit"
                   disabled={loading}
                   variants={buttonVariants}
