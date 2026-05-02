@@ -3,6 +3,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { motion } from "framer-motion";
 import papa from "../assets/Images/papa.jpg";
+import maa from "../assets/Images/Maa.jpeg";
 import { Link } from "react-router-dom";
 
 const About = () => {
@@ -373,41 +374,82 @@ const About = () => {
           </motion.div>
 
           <motion.div
-            className="flex justify-center items-center flex-1"
+            className="flex justify-center items-center flex-1 w-full mt-10 md:mt-0"
             variants={scaleIn}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
           >
-            <motion.div
-              whileHover={{ scale: 1.05, rotate: 2 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="relative"
-            >
-              {/* Image Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
-
-              <img
-                src={papa}
-                alt="Founder"
-                className="relative w-72 aspect-[3/4] rounded-lg object-cover object-top shadow-2xl border-4 border-transparent hover:border-blue-400/50 transition-all duration-300"
-              />
-
-              {/* Floating Badge */}
+            <div className="flex flex-col sm:flex-row items-center gap-8 lg:gap-12 w-full justify-center perspective-1000">
+              
+              {/* Founder Image (Papa) */}
               <motion.div
-                className="absolute -bottom-4 -right-4 bg-gradient-to-r from-blue-400 to-purple-400 text-white px-4 py-2 rounded-full shadow-lg"
-                animate={{
-                  y: [-5, 5, -5],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                whileHover={{ scale: 1.05, rotateY: 10, rotateX: 5 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="relative group w-48 sm:w-56"
+                style={{ transformStyle: "preserve-3d" }}
               >
-                <span className="font-semibold">Founder</span>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity duration-500" />
+                <div className="relative rounded-2xl bg-gray-800 p-2 shadow-2xl border border-gray-700 group-hover:border-blue-400/50 transition-colors duration-500">
+                  <div className="overflow-hidden rounded-xl bg-gray-900 aspect-[3/4]">
+                    <img
+                      src={papa}
+                      alt="Founder - Sanjeev Shrivastava"
+                      className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                    />
+                  </div>
+                  
+                  {/* Floating Label */}
+                  <div className="absolute -bottom-5 inset-x-0 flex justify-center translate-z-10">
+                    <motion.div
+                      className="bg-gray-900 border border-blue-500/50 text-white px-6 py-2 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.3)] backdrop-blur-md"
+                      animate={{ y: [-2, 2, -2] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <span className="font-bold text-sm tracking-wide bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Founder
+                      </span>
+                    </motion.div>
+                  </div>
+                </div>
               </motion.div>
-            </motion.div>
+
+              {/* Connecting Line (Visible on Desktop) */}
+              <div className="hidden sm:block w-8 h-1 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full" />
+
+              {/* Current Owner Image (Maa) */}
+              <motion.div
+                whileHover={{ scale: 1.05, rotateY: -10, rotateX: 5 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="relative group w-48 sm:w-56 mt-6 sm:mt-0"
+                style={{ transformStyle: "preserve-3d" }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity duration-500" />
+                <div className="relative rounded-2xl bg-gray-800 p-2 shadow-2xl border border-gray-700 group-hover:border-pink-400/50 transition-colors duration-500">
+                  <div className="overflow-hidden rounded-xl bg-gray-900 aspect-[3/4]">
+                    <img
+                      src={maa}
+                      alt="Current Owner - Iti Shrivastava"
+                      className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                    />
+                  </div>
+
+                  {/* Floating Label */}
+                  <div className="absolute -bottom-5 inset-x-0 flex justify-center translate-z-10">
+                    <motion.div
+                      className="bg-gray-900 border border-pink-500/50 text-white px-6 py-2 rounded-full shadow-[0_0_15px_rgba(236,72,153,0.3)] backdrop-blur-md"
+                      animate={{ y: [-2, 2, -2] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                    >
+                      <span className="font-bold text-sm tracking-wide bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Current Owner
+                      </span>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+
+            </div>
           </motion.div>
         </div>
       </motion.section>
