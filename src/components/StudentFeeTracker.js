@@ -362,7 +362,7 @@ const StudentFeeTracker = () => {
   const [currentStudent, setCurrentStudent] = useState(null);
   const [adminSearchRoll, setAdminSearchRoll] = useState("");
   const [loading, setLoading] = useState(false);
-  const [testDate, setTestDate] = useState("");
+  const [testDate, setTestDate] = useState(""); // eslint-disable-line
 
   /* ================= ACCESS HANDLER ================= */
   const handleAccess = async (role) => {
