@@ -127,4 +127,46 @@ Semester II:
 - Photo Shop
 - Project`,
   },
+  {
+    title: "Typing",
+    short: "Master your typing speed and accuracy in Hindi and English.",
+    full: `🔹 Typing Course (English & Hindi)
+Duration: 3–6 Months
+
+Modules:
+- English Typing (Touch Typing Technique)
+- Hindi Typing (Mangal & KrutiDev Fonts)
+- Keyboard Mastery & Finger Positioning
+- Speed Building Exercises (WPM Improvement)
+- Accuracy Improvement Techniques
+- Numeric Keypad Training
+- Special Character & Symbol Mastery
+- Real-time Typing Tests & Performance Tracking
+- Basic Document Formatting & Typing for Exams`,
+  },
+  {
+    title: "CFA PLUS",
+    short: "Comprehensive course in computerized financial accounting and Tally.",
+    full: `🔹 CFA PLUS (Computerized Financial Accounting) - Tally
+Duration: 3–4 Months
+
+Modules:
+- Fundamental Of Accounting
+- Concept Of A/c & Handling
+- Inventory Management & Account With Inventory Complete(GST)
+- Tax Accounting
+- Balance sheet & Profit / Loss Sheet Preparing
+- Payroll Management`,
+  },
+  {
+    title: "DTP",
+    short: "Professional desktop publishing course covering design and layout.",
+    full: `🔹 DTP (Desktop Publication)
+Duration: 3–4 Months
+
+Modules:
+- Adobe Page Maker
+- Corel DRAW
+- Photoshop`,
+  },
 ];

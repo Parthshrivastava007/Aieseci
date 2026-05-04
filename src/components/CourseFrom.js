@@ -663,7 +663,7 @@ const CourseForm = () => {
                     <span>Additional Information</span>
                   </h3>
 
-                  {!["CCC", "O-Level"].includes(courseName) && (
+                  {!["CCC"].includes(courseName) && (
                     <motion.div
                       variants={fieldVariants}
                       custom={0}
