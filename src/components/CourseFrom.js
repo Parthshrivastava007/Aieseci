@@ -25,6 +25,7 @@ import {
   HiOutlineCreditCard,
 } from "react-icons/hi";
 import { FaRegIdCard, FaRegAddressCard } from "react-icons/fa"; // eslint-disable-line
+import { courseFees } from "./CourseFeesData";
 
 const CourseForm = () => {
   const [searchParams] = useSearchParams();
@@ -73,7 +74,7 @@ const CourseForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (currentStep < 3) {
       nextStep();
       return;
@@ -99,11 +100,31 @@ const CourseForm = () => {
           ? `AFT-${formData.rollNo}`
           : "";
 
+      // Create fee distribution automatically based on course
+      const courseFeeData = courseFees.find(
+        (c) => c.course_name?.toLowerCase() === courseName?.toLowerCase(),
+      );
+      let initialFeeBreakdown = [];
+      let totalFeeAmount = 0;
+
+      if (courseFeeData && snapshot.empty) {
+        initialFeeBreakdown = courseFeeData.fee_breakdown.map((fee) => ({
+          ...fee,
+          isPaid: false,
+        }));
+        totalFeeAmount = courseFeeData.total_fee;
+      }
+
       const enrollmentData = {
         ...formData,
         rollNo: rollNoWithPrefix,
         [snapshot.empty ? "createdAt" : "updatedAt"]: new Date(),
       };
+
+      if (snapshot.empty && initialFeeBreakdown.length > 0) {
+        enrollmentData.feeBreakdown = initialFeeBreakdown;
+        enrollmentData.totalFee = totalFeeAmount;
+      }
 
       await setDoc(doc(db, "enrollments", docId), enrollmentData);
 
@@ -441,7 +462,7 @@ const CourseForm = () => {
           <motion.form
             onSubmit={handleSubmit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
               }
             }}

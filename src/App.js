@@ -2,12 +2,12 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/NavBar";
 import Home from "./pages/Home";
-import About from "./pages/About";
 import Courses from "./pages/Courses";
 import Contact from "./pages/Contact";
 import { Toaster } from "react-hot-toast";
 import CourseForm from "./components/CourseFrom";
 import EnrollmentTable from "./pages/EnrollementTable";
+import StudentFeeTracker from "./components/StudentFeeTracker";
 
 const App = () => {
   return (
@@ -17,9 +17,9 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/enroll" element={<CourseForm />} />
-        <Route path="/about" element={<About />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/enrollementtable" element={<EnrollmentTable />} />
+        <Route path="/feetracker" element={<StudentFeeTracker />} />
         <Route path="/contact" element={<Contact />} />
       </Routes>
     </Router>

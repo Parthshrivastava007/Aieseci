@@ -12,6 +12,7 @@ import image7 from "../assets/Images/image7.jpg";
 import image8 from "../assets/Images/image8.jpg";
 import image9 from "../assets/Images/image9.jpg";
 import image10 from "../assets/Images/image10.jpg";
+import About from "./About";
 
 const Home = () => {
   useEffect(() => {
@@ -217,6 +218,7 @@ const Home = () => {
           animation-delay: 4s;
         }
       `}</style>
+      <About />
     </main>
   );
 };

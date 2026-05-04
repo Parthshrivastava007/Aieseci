@@ -9,7 +9,6 @@ const Navbar = () => {
 
   const menuItems = [
     { name: "Home", path: "/" },
-    { name: "About", path: "/about" },
     { name: "Courses", path: "/courses" },
     { name: "Admissions", path: "/enrollementtable" },
     { name: "Ledger", path: "/feetracker" },
@@ -41,20 +40,23 @@ const Navbar = () => {
               <Link
                 to={item.path}
                 className={`relative py-1 text-sm font-semibold tracking-wide transition-colors duration-300 group ${
-                  location.pathname === item.path ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
+                  location.pathname === item.path
+                    ? "text-yellow-400"
+                    : "text-gray-300 hover:text-yellow-400"
                 }`}
               >
-                <motion.span
-                  whileHover={{ y: -2 }}
-                  className="inline-block"
-                >
+                <motion.span whileHover={{ y: -2 }} className="inline-block">
                   {item.name}
                 </motion.span>
-                
+
                 {/* Animated Underline */}
-                <span className={`absolute bottom-0 left-0 h-0.5 bg-yellow-400 transition-all duration-300 rounded-full ${
-                  location.pathname === item.path ? "w-full" : "w-0 group-hover:w-full"
-                }`} />
+                <span
+                  className={`absolute bottom-0 left-0 h-0.5 bg-yellow-400 transition-all duration-300 rounded-full ${
+                    location.pathname === item.path
+                      ? "w-full"
+                      : "w-0 group-hover:w-full"
+                  }`}
+                />
               </Link>
             </li>
           ))}
@@ -66,15 +68,21 @@ const Navbar = () => {
           onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
         >
           <motion.span
-            animate={isMobileMenuOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }}
+            animate={
+              isMobileMenuOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }
+            }
             className="w-8 h-0.5 bg-yellow-400 rounded-full block"
           />
           <motion.span
-            animate={isMobileMenuOpen ? { opacity: 0, x: -10 } : { opacity: 1, x: 0 }}
+            animate={
+              isMobileMenuOpen ? { opacity: 0, x: -10 } : { opacity: 1, x: 0 }
+            }
             className="w-8 h-0.5 bg-yellow-400 rounded-full block"
           />
           <motion.span
-            animate={isMobileMenuOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }}
+            animate={
+              isMobileMenuOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }
+            }
             className="w-8 h-0.5 bg-yellow-400 rounded-full block"
           />
         </button>
@@ -92,7 +100,7 @@ const Navbar = () => {
               onClick={() => setMobileMenuOpen(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
             />
-            
+
             {/* Side Menu Drawer */}
             <motion.div
               initial={{ x: "100%" }}
@@ -114,7 +122,9 @@ const Navbar = () => {
                         to={item.path}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`text-xl font-bold transition-all duration-300 flex items-center group ${
-                          location.pathname === item.path ? "text-yellow-400" : "text-gray-100 hover:text-yellow-400"
+                          location.pathname === item.path
+                            ? "text-yellow-400"
+                            : "text-gray-100 hover:text-yellow-400"
                         }`}
                       >
                         <motion.span
@@ -136,8 +146,10 @@ const Navbar = () => {
                 </ul>
 
                 <div className="mt-auto mb-12">
-                   <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4">AIESECI Computer Institute</p>
-                   <div className="w-12 h-1 bg-yellow-400 rounded-full" />
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4">
+                    AIESECI Computer Institute
+                  </p>
+                  <div className="w-12 h-1 bg-yellow-400 rounded-full" />
                 </div>
               </div>
             </motion.div>

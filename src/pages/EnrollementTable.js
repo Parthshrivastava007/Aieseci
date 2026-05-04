@@ -108,6 +108,12 @@ const EnrollmentTable = () => {
         ...d.data(),
       }));
 
+      if (data[0].name?.trim().toLowerCase() !== studentName.trim().toLowerCase()) {
+        toast.error("Roll number and name do not match");
+        setErrorMessage("Roll number and name do not match");
+        return;
+      }
+
       setEnrollments(data);
       setIsAdmin(false);
       setAuthenticated(true);
@@ -283,6 +289,7 @@ const EnrollmentTable = () => {
           setAdminPassword={setAdminPassword}
           handleAccess={handleAccess}
           errorMessage={errorMessage}
+          variant="dashboard"
         />
       </>
     );

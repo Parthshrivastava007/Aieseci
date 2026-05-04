@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import {
   FaEye,
   FaEyeSlash,
   FaUserGraduate,
-  FaUserCog,
+  FaUserShield,
   FaIdCard,
   FaEnvelope,
   FaLock,
+  FaArrowRight,
 } from "react-icons/fa";
 
 const AccessCard = ({
   studentName,
   setStudentName,
-  studentDob,
+  studentDob, // Also used as roll number mapping in old code
+  studentRollNumber,
   setStudentRollNumber,
   adminEmail,
   setAdminEmail,
@@ -22,10 +24,14 @@ const AccessCard = ({
   setAdminPassword,
   errorMessage,
   handleAccess,
+  variant = "fee", // 'fee' | 'dashboard'
 }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const [hoveredCard, setHoveredCard] = useState(null);
-  const [foucsedField, setFocusedField] = useState(null); // eslint-disable-line
+  const [activeTab, setActiveTab] = useState("student");
+
+  // Handle the old prop binding (studentDob vs studentRollNumber)
+  const rollVal = studentRollNumber || studentDob;
+  const setRoll = setStudentRollNumber;
 
   useEffect(() => {
     if (errorMessage) {
@@ -37,588 +43,392 @@ const AccessCard = ({
         pauseOnHover: true,
         draggable: true,
         style: {
-          background: "#1f2937",
-          color: "#fff",
-          border: "1px solid #ef4444",
-          borderRadius: "10px",
+          background: variant === "fee" ? "rgba(20, 20, 20, 0.9)" : "rgba(255, 255, 255, 0.9)",
+          backdropFilter: "blur(10px)",
+          color: variant === "fee" ? "#fff" : "#111",
+          border: "1px solid rgba(239, 68, 68, 0.3)",
+          borderRadius: "16px",
         },
       });
     }
-  }, [errorMessage]);
+  }, [errorMessage, variant]);
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3,
-      },
+  const formVariants = {
+    hidden: { opacity: 0, x: -20, filter: "blur(10px)" },
+    visible: { 
+      opacity: 1, 
+      x: 0, 
+      filter: "blur(0px)",
+      transition: { duration: 0.4, ease: "easeOut", staggerChildren: 0.1 } 
     },
+    exit: { opacity: 0, x: 20, filter: "blur(10px)", transition: { duration: 0.3 } }
   };
 
-  const cardVariants = {
-    hidden: {
-      opacity: 0,
-      y: 50,
-      scale: 0.9,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-        duration: 0.6,
-      },
-    },
-    hover: {
-      y: -10,
-      scale: 1.02,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 15,
-      },
-    },
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 }
   };
 
-  const fieldVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-    focus: {
-      scale: 1.02,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 15,
-      },
-    },
-  };
-
-  const buttonVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-        delay: 0.2,
-      },
-    },
-    hover: {
-      scale: 1.05,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 15,
-      },
-    },
-    tap: {
-      scale: 0.95,
-    },
-  };
-
-  const iconVariants = {
-    initial: { rotate: 0 },
-    hover: {
-      rotate: 360,
-      scale: 1.2,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 15,
-      },
-    },
-  };
-
-  const floatAnimation = {
-    initial: { y: 0 },
-    animate: {
-      y: [-5, 5, -5],
-      transition: {
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut",
-      },
-    },
-  };
-
-  // const pulseAnimation = {
-  //   initial: { scale: 1 },
-  //   animate: {
-  //     scale: [1, 1.05, 1],
-  //     transition: {
-  //       duration: 2,
-  //       repeat: Infinity,
-  //       ease: "easeInOut",
-  //     },
-  //   },
-  // };
-
-  const gradientAnimation = {
-    initial: { backgroundPosition: "0% 50%" },
-    animate: {
-      backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-      transition: {
-        duration: 5,
-        repeat: Infinity,
-        ease: "linear",
-      },
-    },
-  };
-
-  return (
-    <motion.div
-      className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-    >
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full filter blur-3xl"
-          animate={{
-            x: [0, 100, 0],
-            y: [0, 50, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-20 w-96 h-96 bg-green-500/10 rounded-full filter blur-3xl"
-          animate={{
-            x: [0, -100, 0],
-            y: [0, -50, 0],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-        />
-        <motion.div
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-500/10 rounded-full filter blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-
-        {/* Floating Particles */}
-        {[...Array(20)].map((_, i) => (
+  // ==========================================
+  // VARIANT: FEE TRACKER
+  // ==========================================
+  if (variant === "fee") {
+    return (
+      <div className="w-full flex items-center justify-center relative overflow-hidden font-sans min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        
+        {/* Theme Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-blue-400/20 rounded-full"
-            initial={{
-              x:
-                Math.random() *
-                (typeof window !== "undefined" ? window.innerWidth : 1000),
-              y:
-                Math.random() *
-                (typeof window !== "undefined" ? window.innerHeight : 1000),
-            }}
-            animate={{
-              x:
-                Math.random() *
-                (typeof window !== "undefined" ? window.innerWidth : 1000),
-              y:
-                Math.random() *
-                (typeof window !== "undefined" ? window.innerHeight : 1000),
-              scale: [0, 1, 0],
-              opacity: [0, 0.5, 0],
-            }}
-            transition={{
-              duration: Math.random() * 10 + 10,
-              repeat: Infinity,
-              ease: "linear",
-              delay: Math.random() * 5,
-            }}
+            className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full mix-blend-screen filter blur-[100px] opacity-20"
+            style={{ background: "radial-gradient(circle, rgba(236,72,153,0.8) 0%, rgba(236,72,153,0) 70%)" }}
+            animate={{ x: [0, 50, 0], y: [0, -50, 0] }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
           />
-        ))}
+          <motion.div
+            className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen filter blur-[120px] opacity-20"
+            style={{ background: "radial-gradient(circle, rgba(168,85,247,0.8) 0%, rgba(139,92,246,0) 70%)" }}
+            animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        {/* Main Glass Panel */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative w-full max-w-md z-10"
+        >
+          <div className="bg-gray-800/40 backdrop-blur-3xl border border-gray-700/50 rounded-3xl p-6 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+            
+            {/* Header */}
+            <div className="text-center mb-8">
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.2 }}
+                className="w-16 h-16 mx-auto bg-gradient-to-tr from-pink-500 via-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/20"
+              >
+                <FaIdCard className="text-3xl text-white" />
+              </motion.div>
+              <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400">
+                Fee Portal
+              </h2>
+              <p className="text-sm text-gray-400 mt-2">Secure access to your records</p>
+            </div>
+
+            {/* Toggle Tabs */}
+            <div className="flex bg-gray-900/60 rounded-2xl p-1.5 mb-8 border border-gray-700/50 relative">
+              <button 
+                onClick={() => setActiveTab("student")}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 flex justify-center items-center gap-2 z-10 ${
+                  activeTab === "student" ? "text-white" : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <FaUserGraduate className={activeTab === "student" ? "text-blue-400" : ""} /> Student
+              </button>
+              <button 
+                onClick={() => setActiveTab("admin")}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 flex justify-center items-center gap-2 z-10 ${
+                  activeTab === "admin" ? "text-white" : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <FaUserShield className={activeTab === "admin" ? "text-pink-400" : ""} /> Admin
+              </button>
+              <div 
+                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-gray-700/50 rounded-xl border border-gray-600/50 shadow-lg transition-transform duration-500 ease-out`}
+                style={{ transform: activeTab === "admin" ? "translateX(100%)" : "translateX(0)" }}
+              />
+            </div>
+
+            {/* Forms Container */}
+            <div className="min-h-[220px]">
+              <AnimatePresence mode="wait">
+                {activeTab === "student" ? (
+                  <motion.div
+                    key="student"
+                    variants={formVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="space-y-5"
+                  >
+                    <motion.div variants={itemVariants} className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
+                        <FaIdCard />
+                      </div>
+                      <input 
+                        type="text"
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="Full Name"
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:bg-blue-500/5 transition-all"
+                      />
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="relative group flex items-center bg-black/20 border border-white/10 rounded-xl focus-within:border-blue-500/50 focus-within:bg-blue-500/5 transition-all">
+                      <div className="pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
+                        <FaIdCard />
+                      </div>
+                      <span className="pl-3 text-gray-500 font-medium font-mono text-sm tracking-widest">AFT-</span>
+                      <input 
+                        type="text"
+                        value={rollVal}
+                        onChange={(e) => setRoll(e.target.value)}
+                        placeholder="Roll Number"
+                        className="flex-1 bg-transparent py-3.5 pl-1 pr-4 text-white placeholder-gray-600 focus:outline-none"
+                      />
+                    </motion.div>
+
+                    <motion.button
+                      variants={itemVariants}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleAccess("student")}
+                      className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] flex justify-center items-center gap-2 group/btn"
+                    >
+                      Access Portal <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
+                    </motion.button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="admin"
+                    variants={formVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="space-y-5"
+                  >
+                    <motion.div variants={itemVariants} className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-purple-400 transition-colors">
+                        <FaEnvelope />
+                      </div>
+                      <input 
+                        type="email"
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                        placeholder="Admin Email"
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:bg-purple-500/5 transition-all"
+                      />
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-purple-400 transition-colors">
+                        <FaLock />
+                      </div>
+                      <input 
+                        type={showPassword ? "text" : "password"}
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        placeholder="Admin Password"
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-3.5 pl-12 pr-12 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:bg-purple-500/5 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-purple-400 transition-colors"
+                      >
+                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </motion.div>
+
+                    <motion.button
+                      variants={itemVariants}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleAccess("admin")}
+                      className="w-full mt-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)] hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] flex justify-center items-center gap-2 group/btn"
+                    >
+                      Access Dashboard <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // VARIANT: DASHBOARD (GLOBAL THEME WITH YELLOW ACCENT)
+  // ==========================================
+  return (
+    <div className="w-full flex items-center justify-center relative overflow-hidden font-sans min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      
+      {/* Dark Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full mix-blend-screen filter blur-[100px] opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(250,204,21,0.8) 0%, rgba(250,204,21,0) 70%)" }}
+          animate={{ x: [0, 50, 0], y: [0, -50, 0] }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen filter blur-[120px] opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(96,165,250,0.8) 0%, rgba(96,165,250,0) 70%)" }}
+          animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        />
       </div>
 
-      <motion.div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 w-full max-w-5xl relative z-10"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+      {/* Main Glass Panel */}
+      <motion.div 
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-md z-10"
       >
-        {/* Student Card */}
-        <motion.div
-          className="relative group"
-          variants={cardVariants}
-          whileHover="hover"
-          onHoverStart={() => setHoveredCard("student")}
-          onHoverEnd={() => setHoveredCard(null)}
-        >
-          {/* Card Glow Effect */}
-          <motion.div
-            className="absolute -inset-0.5 bg-gradient-to-r from-blue-400 to-purple-400 rounded-xl opacity-0 group-hover:opacity-30 blur transition-all duration-500"
-            animate={
-              hoveredCard === "student" ? { opacity: 0.3 } : { opacity: 0 }
-            }
-          />
-
-          <div className="relative bg-gray-800/50 backdrop-blur-sm p-6 sm:p-8 rounded-xl border border-gray-700 group-hover:border-blue-400/50 transition-all duration-300 overflow-hidden">
-            {/* Shine Effect */}
-            <motion.div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
-              animate={
-                hoveredCard === "student"
-                  ? {
-                      x: ["-100%", "200%"],
-                    }
-                  : {}
-              }
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "linear",
-                repeatDelay: 1,
-              }}
+        <div className="bg-gray-800/60 backdrop-blur-3xl border border-gray-700 rounded-3xl p-6 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
+          
+          {/* Header */}
+          <div className="text-center mb-8">
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", delay: 0.2 }}
+              className="w-16 h-16 mx-auto bg-gray-900 border border-gray-700 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-yellow-500/10"
             >
-              <div className="absolute top-0 -inset-full h-full w-1/2 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <FaIdCard className="text-3xl text-yellow-400" />
             </motion.div>
-
-            {/* Header with Icon */}
-            <div className="flex items-center space-x-3 mb-6">
-              <motion.div
-                variants={iconVariants}
-                initial="initial"
-                whileHover="hover"
-                className="p-3 bg-blue-500/20 rounded-lg"
-              >
-                <FaUserGraduate className="text-blue-400 text-2xl" />
-              </motion.div>
-              <motion.h2
-                className="text-xl sm:text-2xl font-bold"
-                variants={gradientAnimation}
-                initial="initial"
-                animate="animate"
-                style={{
-                  background: "linear-gradient(90deg, #60A5FA, #C084FC)",
-                  backgroundSize: "200% 200%",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                Student Access
-              </motion.h2>
-            </div>
-
-            {/* Form Fields */}
-            <div className="space-y-4">
-              {/* Name Field */}
-              <motion.div
-                variants={fieldVariants}
-                initial="hidden"
-                animate="visible"
-                custom={0}
-                className="space-y-2"
-              >
-                <label className="block text-sm font-semibold text-gray-300 flex items-center space-x-2">
-                  <FaIdCard className="text-blue-400" />
-                  <span>Full Name</span>
-                </label>
-                <motion.div whileFocus="focus" variants={fieldVariants}>
-                  <input
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                    onFocus={() => setFocusedField("student-name")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </motion.div>
-              </motion.div>
-
-              {/* Roll Number Field */}
-              <motion.div
-                variants={fieldVariants}
-                initial="hidden"
-                animate="visible"
-                custom={1}
-                className="space-y-2"
-              >
-                <label className="block text-sm font-semibold text-gray-300 flex items-center space-x-2">
-                  <FaIdCard className="text-blue-400" />
-                  <span>Roll Number</span>
-                </label>
-                <motion.div
-                  className="flex"
-                  whileFocus="focus"
-                  variants={fieldVariants}
-                >
-                  <motion.span
-                    className="bg-gray-600 text-gray-300 px-4 py-3 rounded-l-lg border border-gray-600 border-r-0"
-                    animate={floatAnimation}
-                  >
-                    AFT-
-                  </motion.span>
-                  <input
-                    type="text"
-                    value={studentDob}
-                    onChange={(e) => setStudentRollNumber(e.target.value)}
-                    placeholder="Enter roll number"
-                    className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-r-lg text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                    autoFocus
-                    onFocus={() => setFocusedField("student-roll")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </motion.div>
-              </motion.div>
-            </div>
-
-            {/* Access Button */}
-            <motion.button
-              variants={buttonVariants}
-              initial="hidden"
-              animate="visible"
-              whileHover="hover"
-              whileTap="tap"
-              onClick={() => handleAccess("student")}
-              className="relative w-full mt-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold rounded-lg overflow-hidden group/btn"
-            >
-              {/* Button Shine Effect */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                animate={{
-                  x: ["-100%", "200%"],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "linear",
-                  repeatDelay: 1,
-                }}
-              />
-
-              <span className="relative z-10 flex items-center justify-center space-x-2">
-                <span>Access as Student</span>
-              </span>
-            </motion.button>
+            <h2 className="text-2xl font-black text-white">
+              Student Dashboard
+            </h2>
+            <p className="text-sm text-gray-400 mt-2 font-medium">Log in to view enrollment</p>
           </div>
-        </motion.div>
 
-        {/* Admin Card */}
-        <motion.div
-          className="relative group"
-          variants={cardVariants}
-          whileHover="hover"
-          onHoverStart={() => setHoveredCard("admin")}
-          onHoverEnd={() => setHoveredCard(null)}
-        >
-          {/* Card Glow Effect */}
-          <motion.div
-            className="absolute -inset-0.5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-xl opacity-0 group-hover:opacity-30 blur transition-all duration-500"
-            animate={
-              hoveredCard === "admin" ? { opacity: 0.3 } : { opacity: 0 }
-            }
-          />
-
-          <div className="relative bg-gray-800/50 backdrop-blur-sm p-6 sm:p-8 rounded-xl border border-gray-700 group-hover:border-green-400/50 transition-all duration-300 overflow-hidden">
-            {/* Shine Effect */}
-            <motion.div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
-              animate={
-                hoveredCard === "admin"
-                  ? {
-                      x: ["-100%", "200%"],
-                    }
-                  : {}
-              }
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "linear",
-                repeatDelay: 1,
-              }}
+          {/* Toggle Tabs */}
+          <div className="flex bg-gray-900/80 rounded-2xl p-1.5 mb-8 border border-gray-700 relative">
+            <button 
+              onClick={() => setActiveTab("student")}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all duration-300 flex justify-center items-center gap-2 z-10 ${
+                activeTab === "student" ? "text-yellow-400" : "text-gray-500 hover:text-gray-300"
+              }`}
             >
-              <div className="absolute top-0 -inset-full h-full w-1/2 transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            </motion.div>
-
-            {/* Header with Icon */}
-            <div className="flex items-center space-x-3 mb-6">
-              <motion.div
-                variants={iconVariants}
-                initial="initial"
-                whileHover="hover"
-                className="p-3 bg-green-500/20 rounded-lg"
-              >
-                <FaUserCog className="text-green-400 text-2xl" />
-              </motion.div>
-              <motion.h2
-                className="text-xl sm:text-2xl font-bold"
-                variants={gradientAnimation}
-                initial="initial"
-                animate="animate"
-                style={{
-                  background: "linear-gradient(90deg, #4ADE80, #34D399)",
-                  backgroundSize: "200% 200%",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                Admin Access
-              </motion.h2>
-            </div>
-
-            {/* Form Fields */}
-            <div className="space-y-4">
-              {/* Email Field */}
-              <motion.div
-                variants={fieldVariants}
-                initial="hidden"
-                animate="visible"
-                custom={2}
-                className="space-y-2"
-              >
-                <label className="block text-sm font-semibold text-gray-300 flex items-center space-x-2">
-                  <FaEnvelope className="text-green-400" />
-                  <span>Admin Email</span>
-                </label>
-                <motion.div whileFocus="focus" variants={fieldVariants}>
-                  <input
-                    type="email"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="Enter admin email"
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all duration-300"
-                    onFocus={() => setFocusedField("admin-email")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </motion.div>
-              </motion.div>
-
-              {/* Password Field */}
-              <motion.div
-                variants={fieldVariants}
-                initial="hidden"
-                animate="visible"
-                custom={3}
-                className="space-y-2"
-              >
-                <label className="block text-sm font-semibold text-gray-300 flex items-center space-x-2">
-                  <FaLock className="text-green-400" />
-                  <span>Password</span>
-                </label>
-                <motion.div
-                  className="relative"
-                  whileFocus="focus"
-                  variants={fieldVariants}
-                >
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all duration-300 pr-12"
-                    onFocus={() => setFocusedField("admin-password")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                  <motion.span
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-green-400 cursor-pointer transition-colors duration-300"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    {showPassword ? (
-                      <FaEyeSlash size={20} />
-                    ) : (
-                      <FaEye size={20} />
-                    )}
-                  </motion.span>
-                </motion.div>
-              </motion.div>
-            </div>
-
-            {/* Access Button */}
-            <motion.button
-              variants={buttonVariants}
-              initial="hidden"
-              animate="visible"
-              whileHover="hover"
-              whileTap="tap"
-              onClick={() => handleAccess("admin")}
-              className="relative w-full mt-6 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold rounded-lg overflow-hidden group/btn"
+              <FaUserGraduate className={activeTab === "student" ? "text-yellow-400" : ""} /> Student
+            </button>
+            <button 
+              onClick={() => setActiveTab("admin")}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all duration-300 flex justify-center items-center gap-2 z-10 ${
+                activeTab === "admin" ? "text-blue-400" : "text-gray-500 hover:text-gray-300"
+              }`}
             >
-              {/* Button Shine Effect */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                animate={{
-                  x: ["-100%", "200%"],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "linear",
-                  repeatDelay: 1,
-                }}
-              />
-
-              <span className="relative z-10 flex items-center justify-center space-x-2">
-                <span>Access as Admin</span>
-              </span>
-            </motion.button>
+              <FaUserShield className={activeTab === "admin" ? "text-blue-400" : ""} /> Admin
+            </button>
+            <div 
+              className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-gray-800 rounded-xl border border-gray-600 shadow-sm transition-transform duration-500 ease-out`}
+              style={{ transform: activeTab === "admin" ? "translateX(100%)" : "translateX(0)" }}
+            />
           </div>
-        </motion.div>
-      </motion.div>
 
-      {/* Decorative Elements */}
-      <motion.div
-        className="absolute bottom-10 left-10 text-6xl opacity-10 pointer-events-none"
-        animate={{
-          rotate: [0, 360],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      >
-        <FaUserGraduate />
-      </motion.div>
+          {/* Forms Container */}
+          <div className="min-h-[220px]">
+            <AnimatePresence mode="wait">
+              {activeTab === "student" ? (
+                <motion.div
+                  key="student"
+                  variants={formVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="space-y-5"
+                >
+                  <motion.div variants={itemVariants} className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-yellow-400 transition-colors">
+                      <FaIdCard />
+                    </div>
+                    <input 
+                      type="text"
+                      value={studentName}
+                      onChange={(e) => setStudentName(e.target.value)}
+                      placeholder="Full Name"
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-500 font-medium focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/50 transition-all shadow-sm"
+                    />
+                  </motion.div>
 
-      <motion.div
-        className="absolute top-10 right-10 text-6xl opacity-10 pointer-events-none"
-        animate={{
-          rotate: [0, -360],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      >
-        <FaUserCog />
+                  <motion.div variants={itemVariants} className="relative group flex items-center bg-gray-900/50 border border-gray-700 rounded-xl focus-within:border-yellow-400/50 focus-within:ring-1 focus-within:ring-yellow-400/50 transition-all shadow-sm">
+                    <div className="pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-yellow-400 transition-colors">
+                      <FaIdCard />
+                    </div>
+                    <span className="pl-3 text-gray-500 font-bold font-mono text-sm tracking-widest">AFT-</span>
+                    <input 
+                      type="text"
+                      value={rollVal}
+                      onChange={(e) => setRoll(e.target.value)}
+                      placeholder="Roll Number"
+                      className="flex-1 bg-transparent py-3.5 pl-1 pr-4 text-white font-medium placeholder-gray-500 focus:outline-none"
+                    />
+                  </motion.div>
+
+                  <motion.button
+                    variants={itemVariants}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleAccess("student")}
+                    className="w-full mt-2 py-3.5 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex justify-center items-center gap-2 group/btn"
+                  >
+                    Enter Dashboard <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="admin"
+                  variants={formVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="space-y-5"
+                >
+                  <motion.div variants={itemVariants} className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
+                      <FaEnvelope />
+                    </div>
+                    <input 
+                      type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      placeholder="Admin Email"
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-500 font-medium focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                    />
+                  </motion.div>
+
+                  <motion.div variants={itemVariants} className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
+                      <FaLock />
+                    </div>
+                    <input 
+                      type={showPassword ? "text" : "password"}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Admin Password"
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-xl py-3.5 pl-12 pr-12 text-white placeholder-gray-500 font-medium focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-blue-400 transition-colors"
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </motion.div>
+
+                  <motion.button
+                    variants={itemVariants}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleAccess("admin")}
+                    className="w-full mt-2 py-3.5 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2 group/btn"
+                  >
+                    Access Dashboard <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 };
 
