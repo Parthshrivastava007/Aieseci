@@ -660,7 +660,7 @@ const StudentFeeTracker = () => {
               </div>
             </div>
 
-            <div className="bg-yellow-500/10 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-yellow-500/20">
+            {/* <div className="bg-yellow-500/10 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-yellow-500/20">
               <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-widest mb-4">
                 Testing Sandbox (Admin)
               </h3>
@@ -675,7 +675,7 @@ const StudentFeeTracker = () => {
                 </div>
                 <span className="text-xs text-yellow-600/80 font-medium">Fast-forward time to verify late fine generation.</span>
               </div>
-            </div>
+            </div> */}
           </div>
         )}
 

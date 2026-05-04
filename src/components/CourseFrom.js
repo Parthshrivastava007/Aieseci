@@ -83,22 +83,41 @@ const CourseForm = () => {
     setLoading(true);
 
     try {
-      const docId = `${formData.rollNo || "noRoll"}_${formData.phone}`;
-
-      const q = query(
+      // 1. Check if Phone is already registered
+      const phoneQuery = query(
         collection(db, "enrollments"),
-        where("phone", "==", formData.phone),
-        ...(formData.rollNo
-          ? [where("rollNo", "==", `AFT-${formData.rollNo}`)]
-          : []),
+        where("phone", "==", formData.phone)
       );
+      const phoneSnapshot = await getDocs(phoneQuery);
 
-      const snapshot = await getDocs(q);
+      if (!phoneSnapshot.empty) {
+        toast.error("This phone number is already registered!");
+        setLoading(false);
+        return;
+      }
 
+      // 2. Check if Roll Number is already registered (if provided)
       const rollNoWithPrefix =
         !["CCC", "O-Level"].includes(courseName) && formData.rollNo
           ? `AFT-${formData.rollNo}`
           : "";
+
+      if (rollNoWithPrefix) {
+        const rollQuery = query(
+          collection(db, "enrollments"),
+          where("rollNo", "==", rollNoWithPrefix)
+        );
+        const rollSnapshot = await getDocs(rollQuery);
+
+        if (!rollSnapshot.empty) {
+          toast.error("This roll number is already assigned to another student!");
+          setLoading(false);
+          return;
+        }
+      }
+
+      const docId = `${formData.rollNo || "noRoll"}_${formData.phone}`;
+      const snapshot = { empty: true }; 
 
       // Create fee distribution automatically based on course
       const courseFeeData = courseFees.find(
@@ -107,7 +126,7 @@ const CourseForm = () => {
       let initialFeeBreakdown = [];
       let totalFeeAmount = 0;
 
-      if (courseFeeData && snapshot.empty) {
+      if (courseFeeData) {
         initialFeeBreakdown = courseFeeData.fee_breakdown.map((fee) => ({
           ...fee,
           isPaid: false,
@@ -118,13 +137,10 @@ const CourseForm = () => {
       const enrollmentData = {
         ...formData,
         rollNo: rollNoWithPrefix,
-        [snapshot.empty ? "createdAt" : "updatedAt"]: new Date(),
+        createdAt: new Date(),
+        feeBreakdown: initialFeeBreakdown,
+        totalFee: totalFeeAmount,
       };
-
-      if (snapshot.empty && initialFeeBreakdown.length > 0) {
-        enrollmentData.feeBreakdown = initialFeeBreakdown;
-        enrollmentData.totalFee = totalFeeAmount;
-      }
 
       await setDoc(doc(db, "enrollments", docId), enrollmentData);
 
