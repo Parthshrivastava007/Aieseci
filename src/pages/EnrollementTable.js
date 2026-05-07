@@ -177,6 +177,9 @@ const EnrollmentTable = () => {
       aadhaar: entry.aadhaar,
       address: entry.address,
       dob: entry.dob,
+      dateOfEnrollment: entry.dateOfEnrollment 
+        ? (entry.dateOfEnrollment.includes("/") ? entry.dateOfEnrollment.split("/").reverse().join("-") : entry.dateOfEnrollment)
+        : (entry.createdAt?.toDate ? entry.createdAt.toDate().toISOString().split('T')[0] : ""),
     });
   };
 

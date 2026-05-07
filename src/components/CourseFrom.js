@@ -31,11 +31,8 @@ const CourseForm = () => {
   const [searchParams] = useSearchParams();
   const courseName = searchParams.get("course");
 
-  const todayDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const now = new Date();
+  const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -753,11 +750,13 @@ const CourseForm = () => {
                       <span>Date of Enrollment</span>
                     </label>
                     <input
-                      type="text"
+                      type="date"
                       name="dateOfEnrollment"
                       value={formData.dateOfEnrollment}
-                      disabled
-                      className="w-full p-3 bg-gray-600/50 border border-gray-600 rounded-xl text-gray-300 cursor-not-allowed"
+                      onChange={handleChange}
+                      onFocus={() => setActiveField("dateOfEnrollment")}
+                      onBlur={() => setActiveField(null)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
                     />
                   </motion.div>
                 </motion.div>

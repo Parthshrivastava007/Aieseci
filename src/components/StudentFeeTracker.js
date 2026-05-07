@@ -46,10 +46,16 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
       fee.component_type === "Enrollment Fee" || fee.order === 1;
     if (fee.isPaid || isEnrollmentFee) return;
 
-    const parts = enrollmentDateStr.split("/");
+    const parts = enrollmentDateStr.includes("/") ? enrollmentDateStr.split("/") : enrollmentDateStr.split("-");
     let dateObj;
     if (parts.length === 3) {
-      dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+      if (enrollmentDateStr.includes("/")) {
+        let year = parseInt(parts[2]);
+        if (year < 100) year += 2000;
+        dateObj = new Date(year, parts[1] - 1, parts[0]);
+      } else {
+        dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+      }
     } else {
       dateObj = new Date(enrollmentDateStr);
     }
@@ -59,7 +65,16 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
     if (fee.frequency === "Quarterly") {
       monthsToAdd = (fee.order - 1) * 3;
     }
-    dateObj.setMonth(dateObj.getMonth() + monthsToAdd);
+
+    if (dateObj.getDate() > 25 && fee.order > 1) {
+      monthsToAdd += 1;
+    }
+    
+    const targetMonth = dateObj.getMonth() + monthsToAdd;
+    dateObj.setMonth(targetMonth);
+    if (dateObj.getMonth() !== targetMonth % 12) {
+      dateObj.setDate(0);
+    }
 
     const dueDeadline = new Date(dateObj);
     dueDeadline.setDate(15);
@@ -172,10 +187,16 @@ const FeeTableRow = ({
 }) => {
   const getBaseDate = () => {
     if (!enrollmentDateStr) return null;
-    const parts = enrollmentDateStr.split("/");
+    const parts = enrollmentDateStr.includes("/") ? enrollmentDateStr.split("/") : enrollmentDateStr.split("-");
     let dateObj;
     if (parts.length === 3) {
-      dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+      if (enrollmentDateStr.includes("/")) {
+        let year = parseInt(parts[2]);
+        if (year < 100) year += 2000;
+        dateObj = new Date(year, parts[1] - 1, parts[0]);
+      } else {
+        dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+      }
     } else {
       dateObj = new Date(enrollmentDateStr);
     }
@@ -185,7 +206,16 @@ const FeeTableRow = ({
     if (fee.frequency === "Quarterly") {
       monthsToAdd = (fee.order - 1) * 3;
     }
-    dateObj.setMonth(dateObj.getMonth() + monthsToAdd);
+
+    if (dateObj.getDate() > 25 && fee.order > 1) {
+      monthsToAdd += 1;
+    }
+
+    const targetMonth = dateObj.getMonth() + monthsToAdd;
+    dateObj.setMonth(targetMonth);
+    if (dateObj.getMonth() !== targetMonth % 12) {
+      dateObj.setDate(0);
+    }
     return dateObj;
   };
 
@@ -193,7 +223,12 @@ const FeeTableRow = ({
 
   const dueDate = (() => {
     if (!baseDate) return "N/A";
-    if (fee.order === 1) return enrollmentDateStr;
+    if (fee.order === 1) {
+      const dd = String(baseDate.getDate()).padStart(2, "0");
+      const mm = String(baseDate.getMonth() + 1).padStart(2, "0");
+      const yyyy = baseDate.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
     const m = String(baseDate.getMonth() + 1).padStart(2, "0");
     const y = baseDate.getFullYear();
     return `01/${m}/${y} - 15/${m}/${y}`;
@@ -660,7 +695,7 @@ const StudentFeeTracker = () => {
               </div>
             </div>
 
-            {/* <div className="bg-yellow-500/10 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-yellow-500/20">
+            <div className="bg-yellow-500/10 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-yellow-500/20">
               <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-widest mb-4">
                 Testing Sandbox (Admin)
               </h3>
@@ -675,7 +710,7 @@ const StudentFeeTracker = () => {
                 </div>
                 <span className="text-xs text-yellow-600/80 font-medium">Fast-forward time to verify late fine generation.</span>
               </div>
-            </div> */}
+            </div>
           </div>
         )}
 

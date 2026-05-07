@@ -83,7 +83,17 @@ const EnrollmentTableBody = ({
                 ))}
 
                 <td className="p-3 border">
-                  {formatEnrollmentDate(entry.createdAt)}
+                  {isEditing ? (
+                    <input
+                      type="date"
+                      name="dateOfEnrollment"
+                      value={editData.dateOfEnrollment || ""}
+                      onChange={handleEditChange}
+                      className="text-black p-1 rounded w-full"
+                    />
+                  ) : (
+                    formatDob(entry.dateOfEnrollment) || formatEnrollmentDate(entry.createdAt)
+                  )}
                 </td>
 
                 {isAdmin && (
