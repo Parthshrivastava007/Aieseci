@@ -127,6 +127,8 @@ const CourseForm = () => {
         initialFeeBreakdown = courseFeeData.fee_breakdown.map((fee) => ({
           ...fee,
           isPaid: false,
+          invoiceNo: "",
+          paymentDate: "",
         }));
         totalFeeAmount = courseFeeData.total_fee;
       }

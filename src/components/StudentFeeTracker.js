@@ -30,9 +30,49 @@ const calculateTotals = (paymentStatus, totalFee) => {
   const paid = paymentStatus
     .filter((fee) => fee.isPaid)
     .reduce((acc, curr) => acc + curr.amount, 0);
-  const pending = totalFee - paid;
 
-  return { paid, pending, total: totalFee };
+  const partialPaid = paymentStatus
+    .filter((fee) => !fee.isPaid && fee.partialPaid > 0)
+    .reduce((acc, curr) => acc + curr.partialPaid, 0);
+
+  const totalPaidAmount = paid + partialPaid;
+  const pending = totalFee - totalPaidAmount;
+
+  return { paid: totalPaidAmount, pending, total: totalFee };
+};
+
+const parseCustomDate = (dateStr) => {
+  if (!dateStr) return null;
+  const parts = dateStr.includes("/") ? dateStr.split("/") : dateStr.split("-");
+  if (parts.length !== 3) return new Date(dateStr);
+
+  let dateObj;
+  if (dateStr.includes("/")) {
+    // Handle DD/MM/YYYY
+    let year = parseInt(parts[2]);
+    if (year < 100) year += 2000;
+    dateObj = new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
+  } else {
+    // Handle YYYY-MM-DD
+    if (parts[0].length === 4) {
+      dateObj = new Date(
+        parseInt(parts[0]),
+        parseInt(parts[1]) - 1,
+        parseInt(parts[2]),
+      );
+    } else {
+      dateObj = new Date(dateStr);
+    }
+  }
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+};
+
+const formatDateToDMY = (date) => {
+  if (!date || isNaN(date.getTime())) return "";
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 };
 
 const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
@@ -44,21 +84,10 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
   feeBreakdown.forEach((fee) => {
     const isEnrollmentFee =
       fee.component_type === "Enrollment Fee" || fee.order === 1;
-    if (fee.isPaid || isEnrollmentFee) return;
+    if (isEnrollmentFee || fee.isLateFinePaid) return;
 
-    const parts = enrollmentDateStr.includes("/") ? enrollmentDateStr.split("/") : enrollmentDateStr.split("-");
-    let dateObj;
-    if (parts.length === 3) {
-      if (enrollmentDateStr.includes("/")) {
-        let year = parseInt(parts[2]);
-        if (year < 100) year += 2000;
-        dateObj = new Date(year, parts[1] - 1, parts[0]);
-      } else {
-        dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-      }
-    } else {
-      dateObj = new Date(enrollmentDateStr);
-    }
+    const dateObj = parseCustomDate(enrollmentDateStr);
+    if (!dateObj) return;
     if (isNaN(dateObj.getTime())) return;
 
     let monthsToAdd = fee.order === 1 ? 0 : fee.order - 1;
@@ -69,7 +98,7 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
     if (dateObj.getDate() > 25 && fee.order > 1) {
       monthsToAdd += 1;
     }
-    
+
     const targetMonth = dateObj.getMonth() + monthsToAdd;
     dateObj.setMonth(targetMonth);
     if (dateObj.getMonth() !== targetMonth % 12) {
@@ -80,7 +109,17 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
     dueDeadline.setDate(15);
     dueDeadline.setHours(23, 59, 59, 999);
 
-    const timeDiff = today.getTime() - dueDeadline.getTime();
+    // Use payment date if already paid, else use today
+    let calculationDate = today;
+    if (fee.isPaid && fee.paymentDate) {
+      const pDate = parseCustomDate(fee.paymentDate);
+      if (pDate) {
+        calculationDate = pDate;
+        calculationDate.setHours(23, 59, 59, 999);
+      }
+    }
+
+    const timeDiff = calculationDate.getTime() - dueDeadline.getTime();
     if (timeDiff > 0) {
       const daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
       if (daysLate > 0) {
@@ -98,7 +137,9 @@ const StudentInfoCard = ({ student, totalFee }) => (
     <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
     <div className="flex flex-col md:flex-row justify-between items-start md:items-end relative z-10 gap-6">
       <div>
-        <p className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1">Student Profile</p>
+        <p className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1">
+          Student Profile
+        </p>
         <h3 className="text-3xl font-black text-white mb-3 tracking-tight">
           {student.name}
         </h3>
@@ -126,20 +167,66 @@ const StudentInfoCard = ({ student, totalFee }) => (
 const SummaryCard = ({ title, amount, textColor }) => {
   const isPaid = title.includes("Paid");
   const isPending = title.includes("Pending");
-  
-  const iconBg = isPaid ? "bg-green-500/20 text-green-400" : isPending ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400";
-  const glow = isPaid ? "shadow-[0_8px_30px_rgba(34,197,94,0.15)]" : isPending ? "shadow-[0_8px_30px_rgba(239,68,68,0.15)]" : "shadow-[0_8px_30px_rgba(234,179,8,0.15)]";
+
+  const iconBg = isPaid
+    ? "bg-green-500/20 text-green-400"
+    : isPending
+      ? "bg-red-500/20 text-red-400"
+      : "bg-yellow-500/20 text-yellow-400";
+  const glow = isPaid
+    ? "shadow-[0_8px_30px_rgba(34,197,94,0.15)]"
+    : isPending
+      ? "shadow-[0_8px_30px_rgba(239,68,68,0.15)]"
+      : "shadow-[0_8px_30px_rgba(234,179,8,0.15)]";
 
   return (
-    <div className={`bg-gray-800/80 backdrop-blur-sm p-6 rounded-3xl border border-gray-700 ${glow} relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:bg-gray-700/80`}>
+    <div
+      className={`bg-gray-800/80 backdrop-blur-sm p-6 rounded-3xl border border-gray-700 ${glow} relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:bg-gray-700/80`}
+    >
       <div className="flex justify-between items-start mb-4">
         <div className={`p-3 rounded-2xl ${iconBg}`}>
           {isPaid ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
           ) : isPending ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
           ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
           )}
         </div>
       </div>
@@ -164,18 +251,321 @@ const OverallStatusCard = ({ isFullyPaid }) => (
     <div className="flex items-center z-10">
       {isFullyPaid ? (
         <span className="flex items-center text-green-400 font-black text-2xl tracking-tight">
-          <svg className="w-7 h-7 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <svg
+            className="w-7 h-7 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.5"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
           Fully Paid
         </span>
       ) : (
         <span className="flex items-center text-yellow-400 font-black text-2xl tracking-tight">
-          <svg className="w-7 h-7 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <svg
+            className="w-7 h-7 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.5"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
           Pending Dues
         </span>
       )}
     </div>
   </div>
 );
+
+const InvoiceModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  initialInvoice,
+  initialDate,
+  baseAmount,
+  isEdit,
+  lateFine,
+  isLateFinePaid,
+  lateFinePaidAmount,
+  isFineOnly,
+}) => {
+  const [invoice, setInvoice] = React.useState(initialInvoice || "");
+  const [date, setDate] = React.useState("");
+  const [amount, setAmount] = React.useState(baseAmount || 0);
+  const [fineAmount, setFineAmount] = React.useState(
+    lateFinePaidAmount || lateFine || 0,
+  );
+
+  React.useEffect(() => {
+    setInvoice(initialInvoice || "");
+    setAmount(baseAmount || 0);
+    setFineAmount(lateFinePaidAmount || lateFine || 0);
+    // Default to today if no date provided, else format existing date for input[type=date]
+    if (initialDate) {
+      const parts = initialDate.split("/");
+      if (parts.length === 3) {
+        setDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      } else {
+        setDate(initialDate);
+      }
+    } else {
+      const today = new Date();
+      setDate(
+        `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
+      );
+    }
+  }, [initialInvoice, initialDate, baseAmount, isOpen]); // eslint-disable-line
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    // Format date back to DD/MM/YYYY
+    const dateObj = new Date(date);
+    const formattedDate = !isNaN(dateObj.getTime())
+      ? `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}/${dateObj.getFullYear()}`
+      : new Date().toLocaleDateString("en-IN");
+
+    onConfirm(invoice, formattedDate, Number(amount), Number(fineAmount));
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <style>{`
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  `}</style>
+
+      <div
+        className="relative w-full
+      max-w-2xl
+      bg-[#1e293b]
+      border
+      border-slate-700
+      rounded-3xl
+      shadow-2xl
+      overflow-hidden
+      my-auto
+    "
+      >
+        {/* HEADER */}
+        <div className="px-8 py-6 border-b border-slate-700">
+          <h2 className="text-3xl font-black text-white">Payment Details</h2>
+
+          <p className="text-slate-400 mt-2">
+            Confirm or update the payment information for this installment.
+          </p>
+        </div>
+
+        {/* BODY */}
+        <div className="px-8 py-6 space-y-6 max-h-[65vh] overflow-y-auto hide-scrollbar">
+          {(lateFine > 0 || isLateFinePaid) && (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <p className="text-red-400 font-bold text-lg">Late Fine</p>
+
+                  <p className="text-red-300/70 text-sm mt-1">
+                    Settle the fine amount for this installment.
+                  </p>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2 text-red-400 font-black text-2xl">
+                  {isLateFinePaid
+                    ? `Paid: ₹${lateFinePaidAmount || 0}`
+                    : `Due: ₹${lateFine}`}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold uppercase tracking-wider text-red-400 mb-3">
+                  Fine Amount Collected (₹)
+                </label>
+
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 font-bold">
+                    ₹
+                  </span>
+
+                  <input
+                    type="number"
+                    value={fineAmount}
+                    onChange={(e) => setFineAmount(e.target.value)}
+                    className="
+                  w-full
+                  bg-slate-900/70
+                  border
+                  border-red-500/20
+                  rounded-2xl
+                  py-4
+                  pl-12
+                  pr-4
+                  text-white
+                  text-xl
+                  font-semibold
+                  outline-none
+                  focus:ring-2
+                  focus:ring-red-500/40
+                "
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isEdit && !isFineOnly && (
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                Amount Paid (₹)
+              </label>
+
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">
+                  ₹
+                </span>
+
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="
+                w-full
+                bg-slate-900/70
+                border
+                border-slate-600
+                rounded-2xl
+                py-4
+                pl-12
+                pr-4
+                text-white
+                text-xl
+                font-semibold
+                outline-none
+                focus:ring-2
+                focus:ring-blue-500/40
+              "
+                />
+              </div>
+
+              <p className="text-blue-400 text-sm mt-3">
+                Excess amount automatically carries over to the next
+                installment.
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                Payment Date
+              </label>
+
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="
+              w-full
+              bg-slate-900/70
+              border
+              border-slate-600
+              rounded-2xl
+              p-4
+              text-white
+              outline-none
+              focus:ring-2
+              focus:ring-blue-500/40
+            "
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                Invoice No.
+              </label>
+
+              <input
+                type="text"
+                value={invoice}
+                onChange={(e) => setInvoice(e.target.value)}
+                placeholder="INV-001"
+                className="
+              w-full
+              bg-slate-900/70
+              border
+              border-slate-600
+              rounded-2xl
+              p-4
+              text-white
+              outline-none
+              focus:ring-2
+              focus:ring-blue-500/40
+            "
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="border-t border-slate-700 px-8 py-5 bg-[#1e293b]">
+          <div className="flex gap-4">
+            <button
+              onClick={onClose}
+              className="
+            flex-1
+            py-4
+            rounded-2xl
+            bg-slate-600
+            hover:bg-slate-500
+            text-white
+            font-bold
+            text-lg
+            transition
+          "
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleConfirm}
+              className="
+            flex-1
+            py-4
+            rounded-2xl
+            bg-blue-600
+            hover:bg-blue-500
+            text-white
+            font-bold
+            text-lg
+            shadow-lg
+            shadow-blue-500/20
+            transition
+          "
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const FeeTableRow = ({
   fee,
@@ -187,19 +577,8 @@ const FeeTableRow = ({
 }) => {
   const getBaseDate = () => {
     if (!enrollmentDateStr) return null;
-    const parts = enrollmentDateStr.includes("/") ? enrollmentDateStr.split("/") : enrollmentDateStr.split("-");
-    let dateObj;
-    if (parts.length === 3) {
-      if (enrollmentDateStr.includes("/")) {
-        let year = parseInt(parts[2]);
-        if (year < 100) year += 2000;
-        dateObj = new Date(year, parts[1] - 1, parts[0]);
-      } else {
-        dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-      }
-    } else {
-      dateObj = new Date(enrollmentDateStr);
-    }
+    const dateObj = parseCustomDate(enrollmentDateStr);
+    if (!dateObj) return null;
     if (isNaN(dateObj.getTime())) return null;
 
     let monthsToAdd = fee.order === 1 ? 0 : fee.order - 1;
@@ -246,11 +625,22 @@ const FeeTableRow = ({
     dueDeadline.setHours(23, 59, 59, 999);
 
     const today = testDate ? new Date(testDate) : new Date();
-    const timeDiff = today.getTime() - dueDeadline.getTime();
+
+    // Use payment date if already paid, else use today
+    let calculationDate = today;
+    if (fee.isPaid && fee.paymentDate) {
+      const pDate = parseCustomDate(fee.paymentDate);
+      if (pDate) {
+        calculationDate = pDate;
+        calculationDate.setHours(23, 59, 59, 999);
+      }
+    }
+
+    const timeDiff = calculationDate.getTime() - dueDeadline.getTime();
     if (timeDiff > 0) {
       fineApplicable = true;
       const daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      if (daysLate > 0 && !fee.isPaid && !fee.isLateFinePaid) {
+      if (daysLate > 0 && !fee.isLateFinePaid) {
         lateFine = daysLate * 10;
       }
     }
@@ -262,18 +652,21 @@ const FeeTableRow = ({
   if (fee.isPaid) {
     if (
       isEnrollmentFee ||
-      (!fineApplicable && !fee.isLateFinePaid) ||
+      (lateFine === 0 && !fee.isLateFinePaid) ||
       fee.isLateFinePaid
     ) {
       statusText = "Fully Paid";
       statusColor = "bg-green-100 text-green-800 border border-green-200";
     } else {
-      statusText = "Regular Paid";
+      statusText = "Regular Paid (Fine Pending)";
       statusColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
     }
-  } else if (fee.isLateFinePaid) {
-    statusText = "Fine Paid";
+  } else if (!isEnrollmentFee && fee.isLateFinePaid) {
+    statusText = "Fine Paid (Regular Pending)";
     statusColor = "bg-orange-100 text-orange-800 border border-orange-200";
+  } else if (fee.partialPaid > 0) {
+    statusText = "Partially Paid";
+    statusColor = "bg-blue-100 text-blue-800 border border-blue-200";
   }
 
   const buttonClass = fee.isPaid
@@ -292,17 +685,30 @@ const FeeTableRow = ({
         )}
       </td>
       <td className="p-4 text-gray-700 font-medium">{dueDate}</td>
-      <td className="p-4 text-gray-900 font-bold text-right">
+      <td className="p-4 text-right font-bold text-blue-400">
         ₹{fee.amount?.toLocaleString("en-IN")}
+        {fee.partialPaid > 0 && !fee.isPaid && (
+          <div className="text-xs text-green-500 mt-1 font-semibold">
+            + Paid: ₹{fee.partialPaid.toLocaleString("en-IN")}
+          </div>
+        )}
       </td>
       <td className="p-4 text-right font-bold text-red-600">
-        {fee.isLateFinePaid ? (
-          <span className="text-green-600">Paid</span>
-        ) : lateFine > 0 ? (
+        {!isEnrollmentFee && fee.isLateFinePaid ? (
+          <span className="text-green-500">
+            Paid (₹{fee.lateFinePaidAmount || 0})
+          </span>
+        ) : !isEnrollmentFee && lateFine > 0 ? (
           `₹${lateFine}`
         ) : (
           "-"
         )}
+      </td>
+      <td className="p-4 text-center text-gray-700 font-medium whitespace-nowrap">
+        {fee.paymentDate || "-"}
+      </td>
+      <td className="p-4 text-center text-blue-600 font-bold uppercase tracking-wide">
+        {fee.invoiceNo || "-"}
       </td>
       <td className="p-4 text-center">
         <span
@@ -315,22 +721,51 @@ const FeeTableRow = ({
         <td className="p-4 text-center">
           <div className="flex flex-col items-center space-y-2">
             <button
-              onClick={() => onTogglePayment(fee.order)}
+              onClick={() =>
+                onTogglePayment(
+                  fee.order,
+                  fee.isPaid,
+                  fee.invoiceNo,
+                  fee.paymentDate,
+                  false,
+                  lateFine,
+                )
+              }
               className={`px-4 py-2 w-36 rounded-lg text-sm font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${buttonClass}`}
             >
               {fee.isPaid ? "Unpay Regular" : "Pay Regular"}
             </button>
 
+            {fee.isPaid && (
+              <button
+                onClick={() =>
+                  onTogglePayment(
+                    fee.order,
+                    false,
+                    fee.invoiceNo,
+                    fee.paymentDate,
+                    true,
+                    lateFine,
+                  )
+                }
+                className="px-4 py-2 w-36 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200 transition-all duration-200"
+              >
+                Edit Info
+              </button>
+            )}
+
             {!isEnrollmentFee && (fineApplicable || fee.isLateFinePaid) && (
               <button
-                onClick={() => onToggleLateFinePayment(fee.order)}
+                onClick={() => onToggleLateFinePayment(fee.order, lateFine)}
                 className={`px-4 py-2 w-36 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${
                   fee.isLateFinePaid
                     ? "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
                     : "bg-orange-500 text-white hover:bg-orange-600"
                 }`}
               >
-                {fee.isLateFinePaid ? "Fine Unpaid" : "Pay Fine"}
+                {fee.isLateFinePaid
+                  ? `Fine Paid (₹${fee.lateFinePaidAmount || 0})`
+                  : "Pay Fine"}
               </button>
             )}
           </div>
@@ -348,8 +783,15 @@ const FeeTable = ({
   enrollmentDateStr,
   testDate,
 }) => (
-  <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
-    <table className="w-full text-left border-collapse">
+  <div
+    className="overflow-x-auto rounded-xl border border-gray-700 shadow-sm"
+    style={{
+      WebkitOverflowScrolling: "touch",
+      scrollbarWidth: "thin",
+      scrollbarColor: "#4B5563 transparent",
+    }}
+  >
+    <table className="w-full text-left border-collapse min-w-[800px]">
       <thead>
         <tr className="bg-gray-800 border-b border-gray-700 text-sm text-gray-300 uppercase tracking-wider">
           <th className="p-4 font-bold">S.No</th>
@@ -357,6 +799,8 @@ const FeeTable = ({
           <th className="p-4 font-bold">Due Date</th>
           <th className="p-4 font-bold text-right">Amount</th>
           <th className="p-4 font-bold text-right">Late Fine</th>
+          <th className="p-4 font-bold text-center">Payment Date</th>
+          <th className="p-4 font-bold text-center">Invoice No</th>
           <th className="p-4 font-bold text-center">Status</th>
           {isAdmin && <th className="p-4 font-bold text-center">Action</th>}
         </tr>
@@ -398,6 +842,10 @@ const StudentFeeTracker = () => {
   const [adminSearchRoll, setAdminSearchRoll] = useState("");
   const [loading, setLoading] = useState(false);
   const [testDate, setTestDate] = useState(""); // eslint-disable-line
+
+  /* ================= MODAL STATE ================= */
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState(null);
 
   /* ================= ACCESS HANDLER ================= */
   const handleAccess = async (role) => {
@@ -519,12 +967,144 @@ const StudentFeeTracker = () => {
   };
 
   /* ================= TOGGLE PAYMENT ================= */
-  const handlePaymentToggle = async (orderId) => {
+  const handlePaymentToggle = async (
+    orderId,
+    currentStatus,
+    currentInvoice,
+    currentDate,
+    isEdit = false,
+    lateFine = 0,
+  ) => {
     if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
 
-    const updatedBreakdown = currentStudent.feeBreakdown.map((fee) =>
-      fee.order === orderId ? { ...fee, isPaid: !fee.isPaid } : fee,
+    const feeToPay = currentStudent.feeBreakdown.find(
+      (f) => f.order === orderId,
     );
+    const amountNeeded = feeToPay
+      ? feeToPay.amount - (feeToPay.partialPaid || 0)
+      : 0;
+
+    if (!currentStatus || isEdit) {
+      // If marking as paid OR editing existing payment, show modal
+      const defaultDate = testDate ? new Date(testDate) : new Date();
+      setPendingPayment({
+        orderId,
+        currentInvoice,
+        currentDate: currentDate || formatDateToDMY(defaultDate),
+        baseAmount: isEdit ? feeToPay?.amount : amountNeeded,
+        isEdit,
+        lateFine,
+        isLateFinePaid: feeToPay?.isLateFinePaid || false,
+        lateFinePaidAmount: feeToPay?.lateFinePaidAmount || 0,
+      });
+      setShowInvoiceModal(true);
+      return;
+    }
+
+    // If unpaying, proceed directly
+    await processPayment(orderId, false, "", "");
+  };
+
+  const processPayment = async (
+    orderId,
+    newIsPaid,
+    invoiceNo,
+    paymentDateInput,
+    paidAmount,
+    paidFineAmount,
+    isEdit = false,
+    isFineOnly = false,
+  ) => {
+    const defaultDate = testDate ? new Date(testDate) : new Date();
+    const paymentDate = newIsPaid
+      ? paymentDateInput || formatDateToDMY(defaultDate)
+      : "";
+
+    let updatedBreakdown = [...currentStudent.feeBreakdown];
+
+    if (isFineOnly) {
+      updatedBreakdown = updatedBreakdown.map((fee) =>
+        fee.order === orderId
+          ? {
+              ...fee,
+              isLateFinePaid: paidFineAmount > 0,
+              lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
+            }
+          : fee,
+      );
+    } else if (isEdit) {
+      updatedBreakdown = updatedBreakdown.map((fee) =>
+        fee.order === orderId
+          ? {
+              ...fee,
+              invoiceNo,
+              paymentDate,
+              isLateFinePaid: paidFineAmount > 0,
+              lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
+            }
+          : fee,
+      );
+    } else if (newIsPaid) {
+      let remaining = paidAmount;
+      const startIndex = updatedBreakdown.findIndex((f) => f.order === orderId);
+
+      if (startIndex !== -1) {
+        for (let i = startIndex; i < updatedBreakdown.length; i++) {
+          let fee = { ...updatedBreakdown[i] };
+          let isTargetFee = fee.order === orderId;
+
+          // Apply fine amount ONLY to the target fee
+          if (isTargetFee && paidFineAmount !== undefined) {
+            fee.isLateFinePaid = paidFineAmount > 0;
+            fee.lateFinePaidAmount = paidFineAmount > 0 ? paidFineAmount : 0;
+          }
+
+          if (fee.isPaid) {
+            updatedBreakdown[i] = fee;
+            continue;
+          }
+
+          const needed = fee.amount - (fee.partialPaid || 0);
+
+          if (remaining >= needed) {
+            remaining -= needed;
+            updatedBreakdown[i] = {
+              ...fee,
+              isPaid: true,
+              partialPaid: 0,
+              invoiceNo: isTargetFee ? invoiceNo : fee.invoiceNo || invoiceNo,
+              paymentDate: isTargetFee
+                ? paymentDate
+                : fee.paymentDate || paymentDate,
+            };
+          } else if (remaining > 0) {
+            updatedBreakdown[i] = {
+              ...fee,
+              partialPaid: (fee.partialPaid || 0) + remaining,
+            };
+            remaining = 0;
+          } else {
+            updatedBreakdown[i] = fee;
+          }
+
+          if (remaining <= 0 && i >= startIndex) {
+            break;
+          }
+        }
+      }
+    } else {
+      updatedBreakdown = updatedBreakdown.map((fee) =>
+        fee.order === orderId
+          ? {
+              ...fee,
+              isPaid: false,
+              invoiceNo: "",
+              paymentDate: "",
+              partialPaid: 0,
+            }
+          : fee,
+      );
+    }
 
     // Optimistic update
     setCurrentStudent((prev) => ({
@@ -536,7 +1116,7 @@ const StudentFeeTracker = () => {
       await updateDoc(doc(db, "enrollments", currentStudent.id), {
         feeBreakdown: updatedBreakdown,
       });
-      toast.success("Payment status updated!");
+      toast.success(newIsPaid ? "Payment recorded!" : "Payment removed!");
     } catch {
       toast.error("Failed to update payment status");
       // Revert if failed
@@ -548,33 +1128,54 @@ const StudentFeeTracker = () => {
   };
 
   /* ================= TOGGLE LATE FINE ================= */
-  const handleLateFineToggle = async (orderId) => {
+  const handleLateFineToggle = async (orderId, lateFine = 0) => {
     if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
 
-    const updatedBreakdown = currentStudent.feeBreakdown.map((fee) =>
-      fee.order === orderId
-        ? { ...fee, isLateFinePaid: !fee.isLateFinePaid }
-        : fee,
+    const feeToPay = currentStudent.feeBreakdown.find(
+      (f) => f.order === orderId,
     );
+    if (!feeToPay) return;
 
-    // Optimistic update
-    setCurrentStudent((prev) => ({
-      ...prev,
-      feeBreakdown: updatedBreakdown,
-    }));
+    if (feeToPay.isLateFinePaid) {
+      // Unpay fine directly
+      const updatedBreakdown = currentStudent.feeBreakdown.map((fee) =>
+        fee.order === orderId
+          ? { ...fee, isLateFinePaid: false, lateFinePaidAmount: 0 }
+          : fee,
+      );
 
-    try {
-      await updateDoc(doc(db, "enrollments", currentStudent.id), {
-        feeBreakdown: updatedBreakdown,
-      });
-      toast.success("Late fine payment status updated!");
-    } catch {
-      toast.error("Failed to update late fine payment status");
-      // Revert if failed
       setCurrentStudent((prev) => ({
         ...prev,
-        feeBreakdown: currentStudent.feeBreakdown,
+        feeBreakdown: updatedBreakdown,
       }));
+
+      try {
+        await updateDoc(doc(db, "enrollments", currentStudent.id), {
+          feeBreakdown: updatedBreakdown,
+        });
+        toast.success("Late fine removed!");
+      } catch {
+        toast.error("Failed to update late fine");
+        setCurrentStudent((prev) => ({
+          ...prev,
+          feeBreakdown: currentStudent.feeBreakdown,
+        }));
+      }
+    } else {
+      // Open modal to pay fine
+      const defaultDate = testDate ? new Date(testDate) : new Date();
+      setPendingPayment({
+        orderId,
+        currentInvoice: feeToPay.invoiceNo || "",
+        currentDate: feeToPay.paymentDate || formatDateToDMY(defaultDate),
+        baseAmount: feeToPay.amount,
+        isEdit: false,
+        isFineOnly: true,
+        lateFine,
+        isLateFinePaid: false,
+        lateFinePaidAmount: lateFine, // default to full fine calculated
+      });
+      setShowInvoiceModal(true);
     }
   };
 
@@ -583,14 +1184,19 @@ const StudentFeeTracker = () => {
     if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
 
     const confirmed = window.confirm(
-      "Are you sure you want to mark all fees as paid via a one-time payment? This will settle all installments and waive any accumulated late fines."
+      "Are you sure you want to mark all fees as paid via a one-time payment? This will settle all installments and waive any accumulated late fines.",
     );
     if (!confirmed) return;
 
+    const todayStr = formatDateToDMY(
+      testDate ? new Date(testDate) : new Date(),
+    );
     const updatedBreakdown = currentStudent.feeBreakdown.map((fee) => ({
       ...fee,
       isPaid: true,
       isLateFinePaid: true,
+      paymentDate: fee.isPaid ? fee.paymentDate : todayStr,
+      invoiceNo: fee.invoiceNo || `OTP-${Date.now().toString().slice(-6)}`,
     }));
 
     // Optimistic update
@@ -656,8 +1262,35 @@ const StudentFeeTracker = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-4 font-sans text-gray-200">
       <ToastContainer />
-      <div className="max-w-5xl mx-auto space-y-8">
-        
+
+      <InvoiceModal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        onConfirm={(invoiceNo, paymentDate, paidAmount, paidFineAmount) => {
+          processPayment(
+            pendingPayment.orderId,
+            true,
+            invoiceNo,
+            paymentDate,
+            paidAmount,
+            paidFineAmount,
+            pendingPayment.isEdit,
+            pendingPayment.isFineOnly,
+          );
+          setShowInvoiceModal(false);
+          setPendingPayment(null);
+        }}
+        initialInvoice={pendingPayment?.currentInvoice}
+        initialDate={pendingPayment?.currentDate}
+        baseAmount={pendingPayment?.baseAmount}
+        isEdit={pendingPayment?.isEdit}
+        isFineOnly={pendingPayment?.isFineOnly}
+        lateFine={pendingPayment?.lateFine}
+        isLateFinePaid={pendingPayment?.isLateFinePaid}
+        lateFinePaidAmount={pendingPayment?.lateFinePaidAmount}
+      />
+
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Sleek Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700">
           <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 tracking-tight">
@@ -678,13 +1311,22 @@ const StudentFeeTracker = () => {
                 Find Student
               </h3>
               <div className="flex space-x-3">
-                <input
-                  type="text"
-                  placeholder="Roll No (e.g. AFT-101)"
-                  value={adminSearchRoll}
-                  onChange={(e) => setAdminSearchRoll(e.target.value)}
-                  className="flex-1 p-3.5 bg-gray-900/50 border border-gray-600 rounded-2xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all font-medium"
-                />
+                <div className="flex items-center flex-1 bg-gray-900/50 border border-gray-600 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-blue-500 transition-all font-medium overflow-hidden">
+                  <span className="pl-4 pr-1 text-gray-400 font-bold select-none">
+                    AFT-
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="101"
+                    value={adminSearchRoll.replace(/^AFT-?/i, "")}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^AFT-?/i, "");
+                      setAdminSearchRoll(val ? `AFT-${val}` : "");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAdminSearch()}
+                    className="w-full py-3.5 pr-3.5 bg-transparent text-white placeholder-gray-500 outline-none"
+                  />
+                </div>
                 <button
                   onClick={handleAdminSearch}
                   disabled={loading}
@@ -705,10 +1347,12 @@ const StudentFeeTracker = () => {
                     type="date"
                     value={testDate}
                     onChange={(e) => setTestDate(e.target.value)}
-                    className="p-3 bg-gray-900/50 border border-yellow-500/30 rounded-xl text-yellow-400 focus:ring-2 focus:ring-yellow-500/50 outline-none font-medium w-full color-scheme-dark"
+                    className="p-3 bg-gray-900/50 border border-yellow-500/30 rounded-xl text-yellow-400 focus:ring-2 focus:ring-yellow-500/50 outline-none font-medium w-full"
                   />
                 </div>
-                <span className="text-xs text-yellow-600/80 font-medium">Fast-forward time to verify late fine generation.</span>
+                <span className="text-xs text-yellow-600/80 font-medium">
+                  Fast-forward time to verify late fine generation.
+                </span>
               </div>
             </div>
           </div>
@@ -721,52 +1365,100 @@ const StudentFeeTracker = () => {
               totalFee={currentStudent.totalFee}
             />
 
-            {currentStudent.feeBreakdown && currentStudent.feeBreakdown.length > 0 ? (
+            {currentStudent.feeBreakdown &&
+            currentStudent.feeBreakdown.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {(() => {
-                    const totals = calculateTotals(currentStudent.feeBreakdown, currentStudent.totalFee);
-                    const isFullyPaid = totals.pending === 0;
-                    const totalLateFine = calculateTotalLateFine(currentStudent.feeBreakdown, currentStudent.dateOfEnrollment, testDate);
+                    const totals = calculateTotals(
+                      currentStudent.feeBreakdown,
+                      currentStudent.totalFee,
+                    );
+                    const totalLateFine = calculateTotalLateFine(
+                      currentStudent.feeBreakdown,
+                      currentStudent.dateOfEnrollment,
+                      testDate,
+                    );
+                    const isFullyPaid =
+                      totals.pending === 0 && totalLateFine === 0;
                     return (
                       <>
-                        <SummaryCard title="Total Paid" amount={totals.paid} textColor="text-green-400" />
-                        <SummaryCard title="Total Pending" amount={totals.pending} textColor="text-red-400" />
-                        <SummaryCard title="Total Late Fine" amount={totalLateFine} textColor="text-yellow-400" />
+                        <SummaryCard
+                          title="Total Paid"
+                          amount={totals.paid}
+                          textColor="text-green-400"
+                        />
+                        <SummaryCard
+                          title="Total Pending"
+                          amount={totals.pending + totalLateFine}
+                          textColor="text-red-400"
+                        />
+                        <SummaryCard
+                          title="Total Late Fine"
+                          amount={totalLateFine}
+                          textColor="text-yellow-400"
+                        />
                         <OverallStatusCard isFullyPaid={isFullyPaid} />
                       </>
                     );
                   })()}
                 </div>
 
-                {isAdmin && (() => {
-                  const totals = calculateTotals(currentStudent.feeBreakdown, currentStudent.totalFee);
-                  const isFullyPaid = totals.pending === 0;
-                  const courseInfo = courseFees.find(c => c.course_name === currentStudent.course);
-                  const oneTimeFee = courseInfo ? courseInfo.one_time_fee : null;
-
-                  if (courseInfo && !isFullyPaid) {
-                    return (
-                      <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 p-6 rounded-3xl flex flex-col sm:flex-row justify-between items-center shadow-[0_8px_30px_rgba(234,179,8,0.05)] gap-4 transition-all hover:bg-yellow-500/10">
-                        <div>
-                          <h4 className="text-yellow-400 font-black text-xl mb-1 tracking-tight">One-Time Payment Settlement</h4>
-                          <p className="text-gray-400 text-sm font-medium">
-                            The one-time course fee is <span className="text-white font-bold text-base">₹{oneTimeFee?.toLocaleString("en-IN")}</span>. 
-                            If the student pays this amount in full, you can instantly settle all remaining monthly dues and late fines.
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleOneTimePayment}
-                          className="whitespace-nowrap bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold py-3.5 px-6 rounded-2xl shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] transition-all flex items-center gap-2"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg>
-                          Mark Fully Paid
-                        </button>
-                      </div>
+                {isAdmin &&
+                  (() => {
+                    const totals = calculateTotals(
+                      currentStudent.feeBreakdown,
+                      currentStudent.totalFee,
                     );
-                  }
-                  return null;
-                })()}
+                    const isFullyPaid = totals.pending === 0;
+                    const courseInfo = courseFees.find(
+                      (c) => c.course_name === currentStudent.course,
+                    );
+                    const oneTimeFee = courseInfo
+                      ? courseInfo.one_time_fee
+                      : null;
+
+                    if (courseInfo && !isFullyPaid) {
+                      return (
+                        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 p-6 rounded-3xl flex flex-col sm:flex-row justify-between items-center shadow-[0_8px_30px_rgba(234,179,8,0.05)] gap-4 transition-all hover:bg-yellow-500/10">
+                          <div>
+                            <h4 className="text-yellow-400 font-black text-xl mb-1 tracking-tight">
+                              One-Time Payment Settlement
+                            </h4>
+                            <p className="text-gray-400 text-sm font-medium">
+                              The one-time course fee is{" "}
+                              <span className="text-white font-bold text-base">
+                                ₹{oneTimeFee?.toLocaleString("en-IN")}
+                              </span>
+                              . If the student pays this amount in full, you can
+                              instantly settle all remaining monthly dues and
+                              late fines.
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleOneTimePayment}
+                            className="whitespace-nowrap bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold py-3.5 px-6 rounded-2xl shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] transition-all flex items-center gap-2"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2.5"
+                                d="M5 13l4 4L19 7"
+                              ></path>
+                            </svg>
+                            Mark Fully Paid
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                 <div className="bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 p-6 sm:p-8">
                   <h3 className="text-xl font-black text-white mb-6 tracking-tight">
@@ -787,11 +1479,27 @@ const StudentFeeTracker = () => {
             ) : (
               <div className="text-center p-12 bg-gray-800/80 backdrop-blur-md rounded-3xl border border-gray-700 shadow-xl">
                 <div className="w-16 h-16 bg-yellow-500/20 text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    ></path>
+                  </svg>
                 </div>
-                <h3 className="text-xl font-black text-white mb-2">No Fee Records</h3>
+                <h3 className="text-xl font-black text-white mb-2">
+                  No Fee Records
+                </h3>
                 <p className="text-gray-400 max-w-md mx-auto">
-                  No fee distribution could be found for this student. This usually happens if the student was enrolled prior to the automated system.
+                  No fee distribution could be found for this student. This
+                  usually happens if the student was enrolled prior to the
+                  automated system.
                 </p>
               </div>
             )}
