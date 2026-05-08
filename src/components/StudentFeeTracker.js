@@ -919,6 +919,98 @@ const StudentFeeTracker = () => {
     }
   };
 
+  /* ================= DOWNLOAD DUE LIST ================= */
+  const handleDownloadDueList = async () => {
+    try {
+      setLoading(true);
+      toast.info("Generating due list... please wait.");
+      const enrollmentsRef = collection(db, "enrollments");
+      const snapshot = await getDocs(enrollmentsRef);
+      
+      const csvRows = [
+        ["Roll Number", "Student Name", "Course", "Enrollment Date", "Total Fee", "Total Paid", "Pending Regular Fee", "Late Fine", "Total Due"]
+      ];
+
+      let grandTotalFee = 0;
+      let grandTotalPaid = 0;
+      let grandTotalPendingRegular = 0;
+      let grandTotalLateFine = 0;
+      let grandTotalDue = 0;
+
+      snapshot.forEach(docSnap => {
+        const student = { id: docSnap.id, ...docSnap.data() };
+        if (!student.feeBreakdown || student.feeBreakdown.length === 0) return;
+
+        const totals = calculateTotals(student.feeBreakdown, student.totalFee);
+        const totalLateFine = calculateTotalLateFine(
+          student.feeBreakdown,
+          student.dateOfEnrollment,
+          testDate
+        );
+        const totalDue = totals.pending + totalLateFine;
+
+        if (totalDue > 0) {
+          grandTotalFee += student.totalFee || 0;
+          grandTotalPaid += totals.paid || 0;
+          grandTotalPendingRegular += totals.pending || 0;
+          grandTotalLateFine += totalLateFine || 0;
+          grandTotalDue += totalDue || 0;
+
+          csvRows.push([
+            student.rollNo || "",
+            student.name || "",
+            student.course || "",
+            student.dateOfEnrollment || "",
+            student.totalFee || 0,
+            totals.paid || 0,
+            totals.pending || 0,
+            totalLateFine || 0,
+            totalDue || 0
+          ]);
+        }
+      });
+
+      if (csvRows.length === 1) {
+        toast.success("No students with pending dues found!");
+        setLoading(false);
+        return;
+      }
+
+      // Add a blank row for visual spacing
+      csvRows.push(["", "", "", "", "", "", "", "", ""]);
+      
+      // Add the Grand Total row
+      csvRows.push([
+        "GRAND TOTAL",
+        "",
+        "",
+        "",
+        grandTotalFee,
+        grandTotalPaid,
+        grandTotalPendingRegular,
+        grandTotalLateFine,
+        grandTotalDue
+      ]);
+
+      const csvContent = csvRows.map(e => e.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `student_due_list_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Due list downloaded successfully!");
+    } catch (error) {
+      console.error("Download Error: ", error);
+      toast.error("Failed to generate due list");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* ================= ADMIN SEARCH ================= */
   const handleAdminSearch = async () => {
     if (!adminSearchRoll.trim()) {
@@ -1292,16 +1384,28 @@ const StudentFeeTracker = () => {
 
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Sleek Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700">
-          <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 tracking-tight">
+        <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 gap-4">
+          <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 tracking-tight text-center sm:text-left">
             {isAdmin ? "Admin Fee Management" : "My Fee Status"}
           </h2>
-          <button
-            onClick={handleLogout}
-            className="mt-4 sm:mt-0 bg-red-600 hover:bg-red-500 text-white border border-red-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)] hover:shadow-[0_0_25px_rgba(220,38,38,0.7)]"
-          >
-            Log Out
-          </button>
+          <div className="flex flex-wrap justify-center items-center gap-3 w-full sm:w-auto">
+            {isAdmin && (
+              <button
+                onClick={handleDownloadDueList}
+                disabled={loading}
+                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white border border-gray-600 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                {loading ? "Generating..." : "Download Due List"}
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-500 text-white border border-red-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)] hover:shadow-[0_0_25px_rgba(220,38,38,0.7)]"
+            >
+              Log Out
+            </button>
+          </div>
         </div>
 
         {isAdmin && (
