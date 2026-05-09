@@ -95,7 +95,7 @@ const CourseForm = () => {
 
       // 2. Check if Roll Number is already registered (if provided)
       const rollNoWithPrefix =
-        !["CCC", "O-Level"].includes(courseName) && formData.rollNo
+        !["CCC"].includes(courseName) && formData.rollNo
           ? `AFT-${formData.rollNo}`
           : "";
 

@@ -120,15 +120,76 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
     }
 
     const timeDiff = calculationDate.getTime() - dueDeadline.getTime();
-    if (timeDiff > 0) {
-      const daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      if (daysLate > 0) {
+    const isPastDue = timeDiff > 0;
+    const hasManualFine = fee.manualLateFine !== undefined;
+
+    if (isPastDue || hasManualFine) {
+      const daysLate = isPastDue ? Math.ceil(timeDiff / (1000 * 3600 * 24)) : 0;
+      if (hasManualFine) {
+        totalFine += fee.manualLateFine;
+      } else if (daysLate > 0) {
         totalFine += daysLate * 10;
       }
     }
   });
 
   return totalFine;
+};
+
+const calculateCurrentlyDueRegular = (
+  feeBreakdown,
+  enrollmentDateStr,
+  testDate,
+) => {
+  if (!feeBreakdown || !enrollmentDateStr) return 0;
+
+  let currentlyPendingRegular = 0;
+  const today = testDate ? new Date(testDate) : new Date();
+
+  feeBreakdown.forEach((fee) => {
+    if (fee.isPaid) return;
+
+    const isEnrollmentFee =
+      fee.component_type === "Enrollment Fee" || fee.order === 1;
+
+    let isDue = false;
+
+    if (isEnrollmentFee) {
+      isDue = true;
+    } else {
+      const dateObj = parseCustomDate(enrollmentDateStr);
+      if (dateObj && !isNaN(dateObj.getTime())) {
+        let monthsToAdd = fee.order - 1;
+        if (fee.frequency === "Quarterly") {
+          monthsToAdd = (fee.order - 1) * 3;
+        }
+
+        if (dateObj.getDate() > 25 && fee.order > 1) {
+          monthsToAdd += 1;
+        }
+
+        const targetMonth = dateObj.getMonth() + monthsToAdd;
+        dateObj.setMonth(targetMonth);
+        if (dateObj.getMonth() !== targetMonth % 12) {
+          dateObj.setDate(0);
+        }
+
+        if (
+          dateObj.getFullYear() < today.getFullYear() ||
+          (dateObj.getFullYear() === today.getFullYear() &&
+            dateObj.getMonth() <= today.getMonth())
+        ) {
+          isDue = true;
+        }
+      }
+    }
+
+    if (isDue) {
+      currentlyPendingRegular += fee.amount - (fee.partialPaid || 0);
+    }
+  });
+
+  return currentlyPendingRegular;
 };
 
 // Sub-components
@@ -567,10 +628,63 @@ const InvoiceModal = ({
   );
 };
 
+const EditFineModal = ({ isOpen, onClose, onConfirm, currentFine }) => {
+  const [fine, setFine] = React.useState(currentFine);
+
+  React.useEffect(() => {
+    setFine(currentFine);
+  }, [currentFine, isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#1e293b] border border-slate-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl transition-all">
+        <h2 className="text-2xl font-black text-white mb-2">Edit Late Fine</h2>
+        <p className="text-slate-400 text-sm mb-6">
+          Manually override the late fine for this installment.
+        </p>
+
+        <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Fine Amount (₹)
+        </label>
+        <div className="relative mb-8">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">
+            ₹
+          </span>
+          <input
+            type="number"
+            value={fine}
+            onChange={(e) => setFine(e.target.value)}
+            className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 pl-10 pr-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40"
+          />
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(Number(fine))}
+            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 transition"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FeeTableRow = ({
   fee,
   onTogglePayment,
   onToggleLateFinePayment,
+  onEditLateFine,
+  onCancelFineOverride,
   isAdmin,
   enrollmentDateStr,
   testDate,
@@ -637,11 +751,18 @@ const FeeTableRow = ({
     }
 
     const timeDiff = calculationDate.getTime() - dueDeadline.getTime();
-    if (timeDiff > 0) {
+    const isPastDue = timeDiff > 0;
+    const hasManualFine = fee.manualLateFine !== undefined;
+
+    if (isPastDue || hasManualFine) {
       fineApplicable = true;
-      const daysLate = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      if (daysLate > 0 && !fee.isLateFinePaid) {
-        lateFine = daysLate * 10;
+      const daysLate = isPastDue ? Math.ceil(timeDiff / (1000 * 3600 * 24)) : 0;
+      if (!fee.isLateFinePaid) {
+        if (hasManualFine) {
+          lateFine = fee.manualLateFine;
+        } else if (daysLate > 0) {
+          lateFine = daysLate * 10;
+        }
       }
     }
   }
@@ -736,7 +857,7 @@ const FeeTableRow = ({
               {fee.isPaid ? "Unpay Regular" : "Pay Regular"}
             </button>
 
-            {fee.isPaid && (
+            {(fee.isPaid || fee.partialPaid > 0) && (
               <button
                 onClick={() =>
                   onTogglePayment(
@@ -755,18 +876,49 @@ const FeeTableRow = ({
             )}
 
             {!isEnrollmentFee && (fineApplicable || fee.isLateFinePaid) && (
-              <button
-                onClick={() => onToggleLateFinePayment(fee.order, lateFine)}
-                className={`px-4 py-2 w-36 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${
-                  fee.isLateFinePaid
-                    ? "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
-                    : "bg-orange-500 text-white hover:bg-orange-600"
-                }`}
-              >
-                {fee.isLateFinePaid
-                  ? `Fine Paid (₹${fee.lateFinePaidAmount || 0})`
-                  : "Pay Fine"}
-              </button>
+              <div className="flex items-center space-x-2 w-36">
+                <button
+                  onClick={() =>
+                    lateFine > 0 || fee.isLateFinePaid
+                      ? onToggleLateFinePayment(fee.order, lateFine)
+                      : null
+                  }
+                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${
+                    fee.isLateFinePaid
+                      ? "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                      : lateFine === 0
+                        ? "bg-green-100 text-green-700 border border-green-300 cursor-default hover:bg-green-100 hover:transform-none"
+                        : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  disabled={!fee.isLateFinePaid && lateFine === 0}
+                >
+                  {fee.isLateFinePaid
+                    ? `Fine Paid (₹${fee.lateFinePaidAmount || 0})`
+                    : lateFine === 0
+                      ? "Fine Waived"
+                      : "Pay Fine"}
+                </button>
+                {!fee.isLateFinePaid && (
+                  <>
+                    <button
+                      onClick={() => onEditLateFine(fee.order, lateFine)}
+                      className="p-2 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200 transition-all duration-200 transform hover:-translate-y-0.5"
+                      title="Edit Fine Amount"
+                    >
+                      ✎
+                    </button>
+                    {fee.manualLateFine !== undefined && (
+                      <button
+                        onClick={() => onCancelFineOverride(fee.order)}
+                        className="p-2 rounded-lg text-xs font-bold bg-red-100 text-red-600 border border-red-300 hover:bg-red-200 transition-all duration-200 transform hover:-translate-y-0.5"
+                        title="Cancel Fine Waiver / Override"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         </td>
@@ -779,6 +931,8 @@ const FeeTable = ({
   paymentStatus,
   onTogglePayment,
   onToggleLateFinePayment,
+  onEditLateFine,
+  onCancelFineOverride,
   isAdmin,
   enrollmentDateStr,
   testDate,
@@ -812,6 +966,8 @@ const FeeTable = ({
             fee={fee}
             onTogglePayment={onTogglePayment}
             onToggleLateFinePayment={onToggleLateFinePayment}
+            onEditLateFine={onEditLateFine}
+            onCancelFineOverride={onCancelFineOverride}
             isAdmin={isAdmin}
             enrollmentDateStr={enrollmentDateStr}
             testDate={testDate}
@@ -846,6 +1002,8 @@ const StudentFeeTracker = () => {
   /* ================= MODAL STATE ================= */
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [pendingPayment, setPendingPayment] = useState(null);
+  const [showEditFineModal, setShowEditFineModal] = useState(false);
+  const [editingFineData, setEditingFineData] = useState(null);
 
   /* ================= ACCESS HANDLER ================= */
   const handleAccess = async (role) => {
@@ -920,16 +1078,39 @@ const StudentFeeTracker = () => {
   };
 
   /* ================= DOWNLOAD DUE LIST ================= */
-  const handleDownloadDueList = async () => {
+  const handleDownloadDueList = async (type = "cumulative") => {
     try {
       setLoading(true);
-      toast.info("Generating due list... please wait.");
+      toast.info(`Generating ${type} due list... please wait.`);
       const enrollmentsRef = collection(db, "enrollments");
       const snapshot = await getDocs(enrollmentsRef);
-      
-      const csvRows = [
-        ["Roll Number", "Student Name", "Course", "Enrollment Date", "Total Fee", "Total Paid", "Pending Regular Fee", "Late Fine", "Total Due"]
-      ];
+
+      let headers;
+      if (type === "monthly") {
+        headers = [
+          "Roll Number",
+          "Student Name",
+          "Course",
+          "Enrollment Date",
+          "Pending Regular Fee",
+          "Late Fine",
+          "Total Due",
+        ];
+      } else {
+        headers = [
+          "Roll Number",
+          "Student Name",
+          "Course",
+          "Enrollment Date",
+          "Total Fee",
+          "Total Paid",
+          "Pending Regular Fee",
+          "Late Fine",
+          "Total Due",
+        ];
+      }
+
+      const csvRows = [headers];
 
       let grandTotalFee = 0;
       let grandTotalPaid = 0;
@@ -937,36 +1118,58 @@ const StudentFeeTracker = () => {
       let grandTotalLateFine = 0;
       let grandTotalDue = 0;
 
-      snapshot.forEach(docSnap => {
+      snapshot.forEach((docSnap) => {
         const student = { id: docSnap.id, ...docSnap.data() };
         if (!student.feeBreakdown || student.feeBreakdown.length === 0) return;
 
         const totals = calculateTotals(student.feeBreakdown, student.totalFee);
+        const currentlyDueRegular = calculateCurrentlyDueRegular(
+          student.feeBreakdown,
+          student.dateOfEnrollment,
+          testDate,
+        );
         const totalLateFine = calculateTotalLateFine(
           student.feeBreakdown,
           student.dateOfEnrollment,
-          testDate
+          testDate,
         );
-        const totalDue = totals.pending + totalLateFine;
+
+        const pendingRegular =
+          type === "monthly" ? currentlyDueRegular : totals.pending;
+        const totalDue = pendingRegular + totalLateFine;
 
         if (totalDue > 0) {
           grandTotalFee += student.totalFee || 0;
           grandTotalPaid += totals.paid || 0;
-          grandTotalPendingRegular += totals.pending || 0;
+          grandTotalPendingRegular += pendingRegular || 0;
           grandTotalLateFine += totalLateFine || 0;
           grandTotalDue += totalDue || 0;
 
-          csvRows.push([
-            student.rollNo || "",
-            student.name || "",
-            student.course || "",
-            student.dateOfEnrollment || "",
-            student.totalFee || 0,
-            totals.paid || 0,
-            totals.pending || 0,
-            totalLateFine || 0,
-            totalDue || 0
-          ]);
+          let rowData;
+          if (type === "monthly") {
+            rowData = [
+              student.rollNo || "",
+              student.name || "",
+              student.course || "",
+              student.dateOfEnrollment || "",
+              pendingRegular || 0,
+              totalLateFine || 0,
+              totalDue || 0,
+            ];
+          } else {
+            rowData = [
+              student.rollNo || "",
+              student.name || "",
+              student.course || "",
+              student.dateOfEnrollment || "",
+              student.totalFee || 0,
+              totals.paid || 0,
+              pendingRegular || 0,
+              totalLateFine || 0,
+              totalDue || 0,
+            ];
+          }
+          csvRows.push(rowData);
         }
       });
 
@@ -977,35 +1180,98 @@ const StudentFeeTracker = () => {
       }
 
       // Add a blank row for visual spacing
-      csvRows.push(["", "", "", "", "", "", "", "", ""]);
-      
-      // Add the Grand Total row
-      csvRows.push([
-        "GRAND TOTAL",
-        "",
-        "",
-        "",
-        grandTotalFee,
-        grandTotalPaid,
-        grandTotalPendingRegular,
-        grandTotalLateFine,
-        grandTotalDue
-      ]);
+      if (type === "monthly") {
+        csvRows.push(["", "", "", "", "", "", ""]);
 
-      const csvContent = csvRows.map(e => e.join(",")).join("\n");
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        // Add the Grand Total row
+        csvRows.push([
+          "GRAND TOTAL",
+          "",
+          "",
+          "",
+          grandTotalPendingRegular,
+          grandTotalLateFine,
+          grandTotalDue,
+        ]);
+      } else {
+        csvRows.push(["", "", "", "", "", "", "", "", ""]);
+
+        // Add the Grand Total row
+        csvRows.push([
+          "GRAND TOTAL",
+          "",
+          "",
+          "",
+          grandTotalFee,
+          grandTotalPaid,
+          grandTotalPendingRegular,
+          grandTotalLateFine,
+          grandTotalDue,
+        ]);
+      }
+
+      const csvContent = csvRows.map((e) => e.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `student_due_list_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `student_${type}_due_list_${new Date().toISOString().split("T")[0]}.csv`,
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success("Due list downloaded successfully!");
     } catch (error) {
       console.error("Download Error: ", error);
       toast.error("Failed to generate due list");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= GENERATE OLD STUDENT LEDGER ================= */
+  const handleGenerateLedger = async () => {
+    if (!currentStudent || !currentStudent.course) return;
+
+    try {
+      setLoading(true);
+      const courseFeeData = courseFees.find(
+        (c) => c.course_name?.toLowerCase() === currentStudent.course?.toLowerCase()
+      );
+
+      if (!courseFeeData) {
+        toast.error(`Course fee details not found for ${currentStudent.course}`);
+        setLoading(false);
+        return;
+      }
+
+      const initialFeeBreakdown = courseFeeData.fee_breakdown.map((fee) => ({
+        ...fee,
+        isPaid: false,
+        invoiceNo: "",
+        paymentDate: "",
+      }));
+
+      const totalFeeAmount = courseFeeData.total_fee;
+
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: initialFeeBreakdown,
+        totalFee: totalFeeAmount,
+      });
+
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: initialFeeBreakdown,
+        totalFee: totalFeeAmount,
+      }));
+
+      toast.success("Fee ledger successfully generated for this student!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate fee ledger");
     } finally {
       setLoading(false);
     }
@@ -1107,6 +1373,50 @@ const StudentFeeTracker = () => {
     isEdit = false,
     isFineOnly = false,
   ) => {
+    if (newIsPaid || isEdit || isFineOnly) {
+      if (!invoiceNo || !invoiceNo.trim()) {
+        toast.error("Invoice number is required for a transaction.");
+        return;
+      }
+
+      const invoiceStr = invoiceNo.trim();
+      const originalFee = currentStudent.feeBreakdown.find(
+        (f) => f.order === orderId,
+      );
+      const originalInvoice = originalFee ? originalFee.invoiceNo : null;
+
+      // If the admin changed the invoice number or is providing a new one
+      if (originalInvoice !== invoiceStr) {
+        try {
+          const enrollmentsRef = collection(db, "enrollments");
+          const snapshot = await getDocs(enrollmentsRef);
+          let isDuplicate = false;
+
+          snapshot.forEach((docSnap) => {
+            const student = docSnap.data();
+            if (student.feeBreakdown) {
+              student.feeBreakdown.forEach((f) => {
+                if (f.invoiceNo && f.invoiceNo.trim() === invoiceStr) {
+                  isDuplicate = true;
+                }
+              });
+            }
+          });
+
+          if (isDuplicate) {
+            toast.error(
+              `Invoice number "${invoiceStr}" is already used in another transaction.`,
+            );
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to verify invoice uniqueness.");
+          return;
+        }
+      }
+    }
+
     const defaultDate = testDate ? new Date(testDate) : new Date();
     const paymentDate = newIsPaid
       ? paymentDateInput || formatDateToDMY(defaultDate)
@@ -1271,6 +1581,80 @@ const StudentFeeTracker = () => {
     }
   };
 
+  /* ================= EDIT LATE FINE ================= */
+  const handleEditLateFine = (orderId, currentFine) => {
+    if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+    setEditingFineData({ orderId, currentFine });
+    setShowEditFineModal(true);
+  };
+
+  const confirmEditLateFine = async (newFine) => {
+    if (isNaN(newFine) || newFine < 0) {
+      toast.error("Invalid fine amount.");
+      return;
+    }
+
+    const updatedBreakdown = currentStudent.feeBreakdown.map((fee) =>
+      fee.order === editingFineData.orderId
+        ? { ...fee, manualLateFine: newFine }
+        : fee,
+    );
+
+    setCurrentStudent((prev) => ({
+      ...prev,
+      feeBreakdown: updatedBreakdown,
+    }));
+
+    try {
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: updatedBreakdown,
+      });
+      toast.success("Late fine updated!");
+    } catch {
+      toast.error("Failed to update late fine");
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: currentStudent.feeBreakdown,
+      }));
+    }
+
+    setShowEditFineModal(false);
+  };
+
+  const handleCancelFineOverride = async (orderId) => {
+    if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+
+    const confirmed = window.confirm("Are you sure you want to cancel the fine waiver/override and return to automatic calculation?");
+    if (!confirmed) return;
+
+    const updatedBreakdown = currentStudent.feeBreakdown.map((fee) => {
+      if (fee.order === orderId) {
+        const newFee = { ...fee };
+        delete newFee.manualLateFine;
+        return newFee;
+      }
+      return fee;
+    });
+
+    setCurrentStudent((prev) => ({
+      ...prev,
+      feeBreakdown: updatedBreakdown,
+    }));
+
+    try {
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: updatedBreakdown,
+      });
+      toast.success("Fine waiver cancelled!");
+    } catch {
+      toast.error("Failed to cancel fine waiver");
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: currentStudent.feeBreakdown,
+      }));
+    }
+  };
+
   /* ================= MARK ONE-TIME PAYMENT ================= */
   const handleOneTimePayment = async () => {
     if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
@@ -1382,6 +1766,13 @@ const StudentFeeTracker = () => {
         lateFinePaidAmount={pendingPayment?.lateFinePaidAmount}
       />
 
+      <EditFineModal
+        isOpen={showEditFineModal}
+        onClose={() => setShowEditFineModal(false)}
+        onConfirm={confirmEditLateFine}
+        currentFine={editingFineData?.currentFine || 0}
+      />
+
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Sleek Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 gap-4">
@@ -1390,14 +1781,50 @@ const StudentFeeTracker = () => {
           </h2>
           <div className="flex flex-wrap justify-center items-center gap-3 w-full sm:w-auto">
             {isAdmin && (
-              <button
-                onClick={handleDownloadDueList}
-                disabled={loading}
-                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white border border-gray-600 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                {loading ? "Generating..." : "Download Due List"}
-              </button>
+              <>
+                <button
+                  onClick={() => handleDownloadDueList("monthly")}
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]"
+                  title="Download fees currently due up to this month"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  {loading ? "Generating..." : "Monthly Due List"}
+                </button>
+                <button
+                  onClick={() => handleDownloadDueList("cumulative")}
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white border border-gray-600 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50"
+                  title="Download total pending balance for the entire course"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  {loading ? "Generating..." : "Cumulative Due List"}
+                </button>
+              </>
             )}
             <button
               onClick={handleLogout}
@@ -1573,6 +2000,8 @@ const StudentFeeTracker = () => {
                       paymentStatus={currentStudent.feeBreakdown}
                       onTogglePayment={handlePaymentToggle}
                       onToggleLateFinePayment={handleLateFineToggle}
+                      onEditLateFine={handleEditLateFine}
+                      onCancelFineOverride={handleCancelFineOverride}
                       isAdmin={isAdmin}
                       enrollmentDateStr={currentStudent.dateOfEnrollment}
                       testDate={testDate}
@@ -1600,11 +2029,20 @@ const StudentFeeTracker = () => {
                 <h3 className="text-xl font-black text-white mb-2">
                   No Fee Records
                 </h3>
-                <p className="text-gray-400 max-w-md mx-auto">
+                <p className="text-gray-400 max-w-md mx-auto mb-6">
                   No fee distribution could be found for this student. This
                   usually happens if the student was enrolled prior to the
                   automated system.
                 </p>
+                {isAdmin && (
+                  <button
+                    onClick={handleGenerateLedger}
+                    disabled={loading}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20"
+                  >
+                    {loading ? "Generating..." : "Generate Fee Ledger"}
+                  </button>
+                )}
               </div>
             )}
           </div>
