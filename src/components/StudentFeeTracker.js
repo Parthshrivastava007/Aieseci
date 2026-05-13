@@ -679,6 +679,69 @@ const EditFineModal = ({ isOpen, onClose, onConfirm, currentFine }) => {
   );
 };
 
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) => {
+  const [confirmText, setConfirmText] = React.useState("");
+  
+  React.useEffect(() => {
+    if (isOpen) setConfirmText("");
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const isConfirmed = confirmText.toUpperCase() === "DELETE";
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#1e293b] border border-red-500/30 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(239,68,68,0.2)] transition-all">
+        <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30">
+          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        
+        <h2 className="text-2xl font-black text-white text-center mb-2">Delete Ledger?</h2>
+        <p className="text-slate-400 text-center text-sm mb-6">
+          You are about to delete the entire fee ledger for <span className="text-white font-bold">{studentName}</span>. This action is irreversible.
+        </p>
+
+        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 mb-6">
+          <label className="block text-xs font-bold uppercase tracking-wider text-red-400 mb-2 text-center">
+            Type <span className="bg-red-500 text-white px-2 py-0.5 rounded">DELETE</span> to confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="Type here..."
+            className="w-full bg-slate-900/70 border border-red-500/20 rounded-xl py-3 px-4 text-white text-center font-bold outline-none focus:ring-2 focus:ring-red-500/40 transition-all uppercase"
+          />
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onClose}
+            className="flex-1 py-4 rounded-2xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!isConfirmed}
+            onClick={onConfirm}
+            className={`flex-1 py-4 rounded-2xl font-bold transition-all shadow-lg ${
+              isConfirmed 
+                ? "bg-red-600 hover:bg-red-500 text-white shadow-red-500/20" 
+                : "bg-gray-700 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            Delete Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const FeeTableRow = ({
   fee,
   onTogglePayment,
@@ -1004,6 +1067,7 @@ const StudentFeeTracker = () => {
   const [pendingPayment, setPendingPayment] = useState(null);
   const [showEditFineModal, setShowEditFineModal] = useState(false);
   const [editingFineData, setEditingFineData] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   /* ================= ACCESS HANDLER ================= */
   const handleAccess = async (role) => {
@@ -1272,6 +1336,38 @@ const StudentFeeTracker = () => {
     } catch (err) {
       console.error(err);
       toast.error("Failed to generate fee ledger");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= DELETE STUDENT LEDGER ================= */
+  const handleDeleteLedger = async () => {
+    if (!isAdmin || !currentStudent) return;
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteLedger = async () => {
+    try {
+      setLoading(true);
+      setShowDeleteModal(false);
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: null,
+        totalFee: 0,
+        isOneTimePaid: false,
+      });
+
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: null,
+        totalFee: 0,
+        isOneTimePaid: false,
+      }));
+
+      toast.success("Fee ledger deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete fee ledger");
     } finally {
       setLoading(false);
     }
@@ -1773,6 +1869,13 @@ const StudentFeeTracker = () => {
         currentFine={editingFineData?.currentFine || 0}
       />
 
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteLedger}
+        studentName={currentStudent?.name}
+      />
+
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Sleek Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 gap-4">
@@ -1992,9 +2095,32 @@ const StudentFeeTracker = () => {
                   })()}
 
                 <div className="bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 p-6 sm:p-8">
-                  <h3 className="text-xl font-black text-white mb-6 tracking-tight">
-                    Payment Ledger
-                  </h3>
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h3 className="text-xl font-black text-white tracking-tight">
+                      Payment Ledger
+                    </h3>
+                    {isAdmin && (
+                      <button
+                        onClick={handleDeleteLedger}
+                        className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                        Delete Fee Ledger
+                      </button>
+                    )}
+                  </div>
                   <div className="rounded-2xl overflow-hidden border border-gray-700">
                     <FeeTable
                       paymentStatus={currentStudent.feeBreakdown}
