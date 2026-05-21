@@ -109,6 +109,9 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
     dueDeadline.setDate(15);
     dueDeadline.setHours(23, 59, 59, 999);
 
+    const stopDate = new Date(dueDeadline);
+    stopDate.setMonth(stopDate.getMonth() + 1);
+
     // Use payment date if already paid, else use today
     let calculationDate = today;
     if (fee.isPaid && fee.paymentDate) {
@@ -117,6 +120,11 @@ const calculateTotalLateFine = (feeBreakdown, enrollmentDateStr, testDate) => {
         calculationDate = pDate;
         calculationDate.setHours(23, 59, 59, 999);
       }
+    }
+
+    // Cap the calculation date at stopDate
+    if (calculationDate.getTime() > stopDate.getTime()) {
+      calculationDate = stopDate;
     }
 
     const timeDiff = calculationDate.getTime() - dueDeadline.getTime();
@@ -801,6 +809,9 @@ const FeeTableRow = ({
     dueDeadline.setDate(15);
     dueDeadline.setHours(23, 59, 59, 999);
 
+    const stopDate = new Date(dueDeadline);
+    stopDate.setMonth(stopDate.getMonth() + 1);
+
     const today = testDate ? new Date(testDate) : new Date();
 
     // Use payment date if already paid, else use today
@@ -811,6 +822,11 @@ const FeeTableRow = ({
         calculationDate = pDate;
         calculationDate.setHours(23, 59, 59, 999);
       }
+    }
+
+    // Cap the calculation date at stopDate
+    if (calculationDate.getTime() > stopDate.getTime()) {
+      calculationDate = stopDate;
     }
 
     const timeDiff = calculationDate.getTime() - dueDeadline.getTime();
