@@ -12,6 +12,10 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AccessCard from "./AccessCard";
 import { courseFees } from "./CourseFeesData";
+import jsPDF from "jspdf";
+import autoTable, { applyPlugin } from "jspdf-autotable";
+
+applyPlugin(jsPDF);
 
 // Constants
 // const PAYMENT_STATUS = {
@@ -689,7 +693,7 @@ const EditFineModal = ({ isOpen, onClose, onConfirm, currentFine }) => {
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) => {
   const [confirmText, setConfirmText] = React.useState("");
-  
+
   React.useEffect(() => {
     if (isOpen) setConfirmText("");
   }, [isOpen]);
@@ -706,7 +710,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) =>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </div>
-        
+
         <h2 className="text-2xl font-black text-white text-center mb-2">Delete Ledger?</h2>
         <p className="text-slate-400 text-center text-sm mb-6">
           You are about to delete the entire fee ledger for <span className="text-white font-bold">{studentName}</span>. This action is irreversible.
@@ -735,11 +739,10 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) =>
           <button
             disabled={!isConfirmed}
             onClick={onConfirm}
-            className={`flex-1 py-4 rounded-2xl font-bold transition-all shadow-lg ${
-              isConfirmed 
-                ? "bg-red-600 hover:bg-red-500 text-white shadow-red-500/20" 
+            className={`flex-1 py-4 rounded-2xl font-bold transition-all shadow-lg ${isConfirmed
+                ? "bg-red-600 hover:bg-red-500 text-white shadow-red-500/20"
                 : "bg-gray-700 text-gray-500 cursor-not-allowed"
-            }`}
+              }`}
           >
             Delete Now
           </button>
@@ -962,13 +965,12 @@ const FeeTableRow = ({
                       ? onToggleLateFinePayment(fee.order, lateFine)
                       : null
                   }
-                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${
-                    fee.isLateFinePaid
+                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${fee.isLateFinePaid
                       ? "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
                       : lateFine === 0
                         ? "bg-green-100 text-green-700 border border-green-300 cursor-default hover:bg-green-100 hover:transform-none"
                         : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
+                    }`}
                   disabled={!fee.isLateFinePaid && lateFine === 0}
                 >
                   {fee.isLateFinePaid
@@ -1158,10 +1160,10 @@ const StudentFeeTracker = () => {
   };
 
   /* ================= DOWNLOAD DUE LIST ================= */
-  const handleDownloadDueList = async (type = "cumulative") => {
+  const handleDownloadDueList = async (type = "cumulative", format = "csv") => {
     try {
       setLoading(true);
-      toast.info(`Generating ${type} due list... please wait.`);
+      toast.info(`Generating ${type} due list (${format.toUpperCase()})... please wait.`);
       const enrollmentsRef = collection(db, "enrollments");
       const snapshot = await getDocs(enrollmentsRef);
 
@@ -1190,13 +1192,14 @@ const StudentFeeTracker = () => {
         ];
       }
 
-      const csvRows = [headers];
-
       let grandTotalFee = 0;
       let grandTotalPaid = 0;
       let grandTotalPendingRegular = 0;
       let grandTotalLateFine = 0;
       let grandTotalDue = 0;
+
+      // First pass: accumulate grand totals and verify there is data
+      const eligibleStudents = [];
 
       snapshot.forEach((docSnap) => {
         const student = { id: docSnap.id, ...docSnap.data() };
@@ -1225,6 +1228,135 @@ const StudentFeeTracker = () => {
           grandTotalLateFine += totalLateFine || 0;
           grandTotalDue += totalDue || 0;
 
+          eligibleStudents.push({
+            student,
+            pendingRegular,
+            totalLateFine,
+            totalDue,
+            totals,
+          });
+        }
+      });
+
+      if (eligibleStudents.length === 0) {
+        toast.success("No students with pending dues found!");
+        setLoading(false);
+        return;
+      }
+
+      if (format === "pdf") {
+        const doc = new jsPDF();
+
+        // Header styling
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(31, 41, 55); // Slate 800
+        doc.text("AIESECI COMPUTER INSTITUTE", 14, 22);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(107, 114, 128); // Gray 500
+        doc.text("Anpara, Sonbhadra, Uttar Pradesh | Website: https://aieseci.vercel.app/", 14, 28);
+        doc.text(`Report: ${type === "monthly" ? "Monthly" : "Cumulative"} Due List | Generated: ${new Date().toLocaleDateString("en-IN")}`, 14, 34);
+
+        // Divider
+        doc.setDrawColor(229, 231, 235); // Gray 200
+        doc.setLineWidth(0.5);
+        doc.line(14, 38, 196, 38);
+
+        // Populate table rows
+        const tableRows = eligibleStudents.map(({ student, pendingRegular, totalLateFine, totalDue, totals }) => {
+          if (type === "monthly") {
+            return [
+              student.rollNo || "",
+              student.name || "",
+              student.course || "",
+              student.dateOfEnrollment || "",
+              `Rs. ${pendingRegular.toLocaleString("en-IN")}`,
+              `Rs. ${totalLateFine.toLocaleString("en-IN")}`,
+              `Rs. ${totalDue.toLocaleString("en-IN")}`,
+            ];
+          } else {
+            return [
+              student.rollNo || "",
+              student.name || "",
+              student.course || "",
+              student.dateOfEnrollment || "",
+              `Rs. ${(student.totalFee || 0).toLocaleString("en-IN")}`,
+              `Rs. ${(totals.paid || 0).toLocaleString("en-IN")}`,
+              `Rs. ${pendingRegular.toLocaleString("en-IN")}`,
+              `Rs. ${totalLateFine.toLocaleString("en-IN")}`,
+              `Rs. ${totalDue.toLocaleString("en-IN")}`,
+            ];
+          }
+        });
+
+        // Add Grand Total row
+        let grandTotalRow;
+        if (type === "monthly") {
+          grandTotalRow = [
+            "GRAND TOTAL",
+            "",
+            "",
+            "",
+            `Rs. ${grandTotalPendingRegular.toLocaleString("en-IN")}`,
+            `Rs. ${grandTotalLateFine.toLocaleString("en-IN")}`,
+            `Rs. ${grandTotalDue.toLocaleString("en-IN")}`,
+          ];
+        } else {
+          grandTotalRow = [
+            "GRAND TOTAL",
+            "",
+            "",
+            "",
+            `Rs. ${grandTotalFee.toLocaleString("en-IN")}`,
+            `Rs. ${grandTotalPaid.toLocaleString("en-IN")}`,
+            `Rs. ${grandTotalPendingRegular.toLocaleString("en-IN")}`,
+            `Rs. ${grandTotalLateFine.toLocaleString("en-IN")}`,
+            `Rs. ${grandTotalDue.toLocaleString("en-IN")}`,
+          ];
+        }
+
+        autoTable(doc, {
+          startY: 44,
+          head: [headers],
+          body: tableRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [79, 70, 229], // Indigo 600
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+          },
+          styles: {
+            fontSize: 8.5,
+            cellPadding: 3,
+          },
+          columnStyles: type === "monthly" ? {
+            4: { halign: "right" },
+            5: { halign: "right" },
+            6: { halign: "right" },
+          } : {
+            4: { halign: "right" },
+            5: { halign: "right" },
+            6: { halign: "right" },
+            7: { halign: "right" },
+            8: { halign: "right" },
+          },
+          foot: [grandTotalRow],
+          footStyles: {
+            fillColor: [31, 41, 55], // Charcoal Gray 800
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+          },
+        });
+
+        doc.save(`student_${type}_due_list_${new Date().toISOString().split("T")[0]}.pdf`);
+        toast.success("PDF Due list downloaded successfully!");
+      } else {
+        // CSV Format
+        const csvRows = [headers];
+
+        eligibleStudents.forEach(({ student, pendingRegular, totalLateFine, totalDue, totals }) => {
           let rowData;
           if (type === "monthly") {
             rowData = [
@@ -1250,60 +1382,50 @@ const StudentFeeTracker = () => {
             ];
           }
           csvRows.push(rowData);
+        });
+
+        // Add blank row and Grand Total row
+        if (type === "monthly") {
+          csvRows.push(["", "", "", "", "", "", ""]);
+          csvRows.push([
+            "GRAND TOTAL",
+            "",
+            "",
+            "",
+            grandTotalPendingRegular,
+            grandTotalLateFine,
+            grandTotalDue,
+          ]);
+        } else {
+          csvRows.push(["", "", "", "", "", "", "", "", ""]);
+          csvRows.push([
+            "GRAND TOTAL",
+            "",
+            "",
+            "",
+            grandTotalFee,
+            grandTotalPaid,
+            grandTotalPendingRegular,
+            grandTotalLateFine,
+            grandTotalDue,
+          ]);
         }
-      });
 
-      if (csvRows.length === 1) {
-        toast.success("No students with pending dues found!");
-        setLoading(false);
-        return;
+        const csvContent = csvRows.map((e) => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute(
+          "download",
+          `student_${type}_due_list_${new Date().toISOString().split("T")[0]}.csv`,
+        );
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast.success("CSV Due list downloaded successfully!");
       }
-
-      // Add a blank row for visual spacing
-      if (type === "monthly") {
-        csvRows.push(["", "", "", "", "", "", ""]);
-
-        // Add the Grand Total row
-        csvRows.push([
-          "GRAND TOTAL",
-          "",
-          "",
-          "",
-          grandTotalPendingRegular,
-          grandTotalLateFine,
-          grandTotalDue,
-        ]);
-      } else {
-        csvRows.push(["", "", "", "", "", "", "", "", ""]);
-
-        // Add the Grand Total row
-        csvRows.push([
-          "GRAND TOTAL",
-          "",
-          "",
-          "",
-          grandTotalFee,
-          grandTotalPaid,
-          grandTotalPendingRegular,
-          grandTotalLateFine,
-          grandTotalDue,
-        ]);
-      }
-
-      const csvContent = csvRows.map((e) => e.join(",")).join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `student_${type}_due_list_${new Date().toISOString().split("T")[0]}.csv`,
-      );
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success("Due list downloaded successfully!");
     } catch (error) {
       console.error("Download Error: ", error);
       toast.error("Failed to generate due list");
@@ -1540,22 +1662,22 @@ const StudentFeeTracker = () => {
       updatedBreakdown = updatedBreakdown.map((fee) =>
         fee.order === orderId
           ? {
-              ...fee,
-              isLateFinePaid: paidFineAmount > 0,
-              lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
-            }
+            ...fee,
+            isLateFinePaid: paidFineAmount > 0,
+            lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
+          }
           : fee,
       );
     } else if (isEdit) {
       updatedBreakdown = updatedBreakdown.map((fee) =>
         fee.order === orderId
           ? {
-              ...fee,
-              invoiceNo,
-              paymentDate,
-              isLateFinePaid: paidFineAmount > 0,
-              lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
-            }
+            ...fee,
+            invoiceNo,
+            paymentDate,
+            isLateFinePaid: paidFineAmount > 0,
+            lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
+          }
           : fee,
       );
     } else if (newIsPaid) {
@@ -1610,12 +1732,12 @@ const StudentFeeTracker = () => {
       updatedBreakdown = updatedBreakdown.map((fee) =>
         fee.order === orderId
           ? {
-              ...fee,
-              isPaid: false,
-              invoiceNo: "",
-              paymentDate: "",
-              partialPaid: 0,
-            }
+            ...fee,
+            isPaid: false,
+            invoiceNo: "",
+            paymentDate: "",
+            partialPaid: 0,
+          }
           : fee,
       );
     }
@@ -1902,10 +2024,10 @@ const StudentFeeTracker = () => {
             {isAdmin && (
               <>
                 <button
-                  onClick={() => handleDownloadDueList("monthly")}
+                  onClick={() => handleDownloadDueList("monthly", "csv")}
                   disabled={loading}
                   className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]"
-                  title="Download fees currently due up to this month"
+                  title="Download fees currently due up to this month as CSV"
                 >
                   <svg
                     className="w-4 h-4"
@@ -1920,10 +2042,31 @@ const StudentFeeTracker = () => {
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                     />
                   </svg>
-                  {loading ? "Generating..." : "Monthly Due List"}
+                  {loading ? "Generating..." : "Monthly Due List (CSV)"}
                 </button>
                 <button
-                  onClick={() => handleDownloadDueList("cumulative")}
+                  onClick={() => handleDownloadDueList("monthly", "pdf")}
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]"
+                  title="Download fees currently due up to this month as PDF"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                    />
+                  </svg>
+                  {loading ? "Generating..." : "Monthly Due List (PDF)"}
+                </button>
+                <button
+                  onClick={() => handleDownloadDueList("cumulative", "csv")}
                   disabled={loading}
                   className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white border border-gray-600 px-5 py-2.5 rounded-full text-sm font-bold transition-all disabled:opacity-50"
                   title="Download total pending balance for the entire course"
@@ -2016,7 +2159,7 @@ const StudentFeeTracker = () => {
             />
 
             {currentStudent.feeBreakdown &&
-            currentStudent.feeBreakdown.length > 0 ? (
+              currentStudent.feeBreakdown.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {(() => {
