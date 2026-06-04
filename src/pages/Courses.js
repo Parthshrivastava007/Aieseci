@@ -398,7 +398,7 @@ const Courses = () => {
       <AnimatePresence>
         {selectedCourse && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            className="fixed mt-20 inset-0 z-50 flex items-center justify-center px-4"
             variants={overlayVariants}
             initial="hidden"
             animate="visible"
@@ -420,7 +420,7 @@ const Courses = () => {
               {/* Modal Header */}
               <div className="relative p-6 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-b border-gray-700">
                 <motion.h2
-                  className="text-3xl font-bold text-white pr-10"
+                  className="text-3xl font-bold text-white pr-10 py-1 leading-normal"
                   variants={gradientAnimation}
                   initial="initial"
                   animate="animate"
@@ -445,7 +445,7 @@ const Courses = () => {
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 max-h-[60vh] overflow-y-auto custom-scroll">
+              <div className="p-6 max-h-[50vh] overflow-y-auto custom-scroll">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
