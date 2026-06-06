@@ -15,6 +15,7 @@ import image9 from "../assets/Images/image9.jpg";
 import image10 from "../assets/Images/image10.jpg";
 import papa from "../assets/Images/papa.jpg";
 import maa from "../assets/Images/Maa.jpeg";
+import Footer from "../components/Footer";
 
 const Home = () => {
   useEffect(() => {
@@ -804,6 +805,8 @@ const Home = () => {
           </motion.section>
         </Link>
       </div>
+
+      <Footer />
 
       {/* Back to Top Button */}
       <motion.button

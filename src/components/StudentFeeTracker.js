@@ -762,6 +762,7 @@ const FeeTableRow = ({
   isAdmin,
   enrollmentDateStr,
   testDate,
+  isEnrollmentFeePaid,
 }) => {
   const getBaseDate = () => {
     if (!enrollmentDateStr) return null;
@@ -801,8 +802,19 @@ const FeeTableRow = ({
     return `01/${m}/${y} - 15/${m}/${y}`;
   })();
 
+  const displayInstallments = fee.installments || (
+    fee.isPaid
+      ? [{ amount: fee.amount, date: fee.paymentDate || "N/A", invoiceNo: fee.invoiceNo || "N/A" }]
+      : fee.partialPaid > 0
+        ? [{ amount: fee.partialPaid, date: fee.paymentDate || "N/A", invoiceNo: fee.invoiceNo || "N/A" }]
+        : []
+  );
+
   const isEnrollmentFee =
     fee.component_type === "Enrollment Fee" || fee.order === 1;
+
+  const isLocked = !isEnrollmentFee && !isEnrollmentFeePaid && !fee.isPaid;
+  const isFineLocked = !isEnrollmentFee && !isEnrollmentFeePaid && !fee.isLateFinePaid;
 
   let lateFine = 0;
   let fineApplicable = false;
@@ -886,6 +898,24 @@ const FeeTableRow = ({
             {fee.frequency}
           </span>
         )}
+        {displayInstallments.length > 0 && (
+          <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-gray-300 text-xs font-normal text-gray-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+              Installment History:
+            </span>
+            {displayInstallments.map((inst, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-gray-700">₹{inst.amount?.toLocaleString("en-IN")}</span>
+                <span>on {inst.date}</span>
+                {inst.invoiceNo && (
+                  <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-200">
+                    Inv: {inst.invoiceNo}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </td>
       <td className="p-4 text-gray-700 font-medium">{dueDate}</td>
       <td className="p-4 text-right font-bold text-blue-400">
@@ -925,6 +955,7 @@ const FeeTableRow = ({
           <div className="flex flex-col items-center space-y-2">
             <button
               onClick={() =>
+                !isLocked &&
                 onTogglePayment(
                   fee.order,
                   fee.isPaid,
@@ -934,7 +965,12 @@ const FeeTableRow = ({
                   lateFine,
                 )
               }
-              className={`px-4 py-2 w-36 rounded-lg text-sm font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${buttonClass}`}
+              disabled={isLocked}
+              className={`px-4 py-2 w-36 rounded-lg text-sm font-bold shadow-sm transition-all duration-200 transform ${
+                isLocked
+                  ? "bg-gray-700 text-gray-500 border border-gray-800 cursor-not-allowed"
+                  : `${buttonClass} hover:-translate-y-0.5`
+              }`}
             >
               {fee.isPaid ? "Unpay Regular" : "Pay Regular"}
             </button>
@@ -961,17 +997,23 @@ const FeeTableRow = ({
               <div className="flex items-center space-x-2 w-36">
                 <button
                   onClick={() =>
-                    lateFine > 0 || fee.isLateFinePaid
+                    !isFineLocked &&
+                    (lateFine > 0 || fee.isLateFinePaid
                       ? onToggleLateFinePayment(fee.order, lateFine)
-                      : null
+                      : null)
                   }
-                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 ${fee.isLateFinePaid
-                      ? "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
-                      : lateFine === 0
-                        ? "bg-green-100 text-green-700 border border-green-300 cursor-default hover:bg-green-100 hover:transform-none"
-                        : "bg-orange-500 text-white hover:bg-orange-600"
-                    }`}
-                  disabled={!fee.isLateFinePaid && lateFine === 0}
+                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-bold shadow-sm transition-all duration-200 transform ${
+                    isFineLocked
+                      ? "bg-gray-700 text-gray-500 border border-gray-800 cursor-not-allowed"
+                      : `${
+                          fee.isLateFinePaid
+                            ? "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 hover:-translate-y-0.5"
+                            : lateFine === 0
+                              ? "bg-green-100 text-green-700 border border-green-300 cursor-default hover:bg-green-100 hover:transform-none"
+                              : "bg-orange-500 text-white hover:bg-orange-600 hover:-translate-y-0.5"
+                        }`
+                  }`}
+                  disabled={isFineLocked || (!fee.isLateFinePaid && lateFine === 0)}
                 >
                   {fee.isLateFinePaid
                     ? `Fine Paid (₹${fee.lateFinePaidAmount || 0})`
@@ -982,8 +1024,13 @@ const FeeTableRow = ({
                 {!fee.isLateFinePaid && (
                   <>
                     <button
-                      onClick={() => onEditLateFine(fee.order, lateFine)}
-                      className="p-2 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200 transition-all duration-200 transform hover:-translate-y-0.5"
+                      onClick={() => !isFineLocked && onEditLateFine(fee.order, lateFine)}
+                      disabled={isFineLocked}
+                      className={`p-2 rounded-lg text-xs font-bold border transition-all duration-200 transform ${
+                        isFineLocked
+                          ? "bg-gray-700 text-gray-500 border-gray-800 cursor-not-allowed"
+                          : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200 hover:-translate-y-0.5"
+                      }`}
                       title="Edit Fine Amount"
                     >
                       ✎
@@ -1017,47 +1064,54 @@ const FeeTable = ({
   isAdmin,
   enrollmentDateStr,
   testDate,
-}) => (
-  <div
-    className="overflow-x-auto rounded-xl border border-gray-700 shadow-sm"
-    style={{
-      WebkitOverflowScrolling: "touch",
-      scrollbarWidth: "thin",
-      scrollbarColor: "#4B5563 transparent",
-    }}
-  >
-    <table className="w-full text-left border-collapse min-w-[800px]">
-      <thead>
-        <tr className="bg-gray-800 border-b border-gray-700 text-sm text-gray-300 uppercase tracking-wider">
-          <th className="p-4 font-bold">S.No</th>
-          <th className="p-4 font-bold">Component Type</th>
-          <th className="p-4 font-bold">Due Date</th>
-          <th className="p-4 font-bold text-right">Amount</th>
-          <th className="p-4 font-bold text-right">Late Fine</th>
-          <th className="p-4 font-bold text-center">Payment Date</th>
-          <th className="p-4 font-bold text-center">Invoice No</th>
-          <th className="p-4 font-bold text-center">Status</th>
-          {isAdmin && <th className="p-4 font-bold text-center">Action</th>}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-700 bg-gray-900/50">
-        {paymentStatus?.map((fee) => (
-          <FeeTableRow
-            key={fee.order}
-            fee={fee}
-            onTogglePayment={onTogglePayment}
-            onToggleLateFinePayment={onToggleLateFinePayment}
-            onEditLateFine={onEditLateFine}
-            onCancelFineOverride={onCancelFineOverride}
-            isAdmin={isAdmin}
-            enrollmentDateStr={enrollmentDateStr}
-            testDate={testDate}
-          />
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+}) => {
+  const isEnrollmentFeePaid = paymentStatus?.find(
+    (f) => f.order === 1 || f.component_type === "Enrollment Fee"
+  )?.isPaid;
+
+  return (
+    <div
+      className="overflow-x-auto rounded-xl border border-gray-700 shadow-sm"
+      style={{
+        WebkitOverflowScrolling: "touch",
+        scrollbarWidth: "thin",
+        scrollbarColor: "#4B5563 transparent",
+      }}
+    >
+      <table className="w-full text-left border-collapse min-w-[800px]">
+        <thead>
+          <tr className="bg-gray-800 border-b border-gray-700 text-sm text-gray-300 uppercase tracking-wider">
+            <th className="p-4 font-bold">S.No</th>
+            <th className="p-4 font-bold">Component Type</th>
+            <th className="p-4 font-bold">Due Date</th>
+            <th className="p-4 font-bold text-right">Amount</th>
+            <th className="p-4 font-bold text-right">Late Fine</th>
+            <th className="p-4 font-bold text-center">Payment Date</th>
+            <th className="p-4 font-bold text-center">Invoice No</th>
+            <th className="p-4 font-bold text-center">Status</th>
+            {isAdmin && <th className="p-4 font-bold text-center">Action</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-700 bg-gray-900/50">
+          {paymentStatus?.map((fee) => (
+            <FeeTableRow
+              key={fee.order}
+              fee={fee}
+              onTogglePayment={onTogglePayment}
+              onToggleLateFinePayment={onToggleLateFinePayment}
+              onEditLateFine={onEditLateFine}
+              onCancelFineOverride={onCancelFineOverride}
+              isAdmin={isAdmin}
+              enrollmentDateStr={enrollmentDateStr}
+              testDate={testDate}
+              isEnrollmentFeePaid={isEnrollmentFeePaid}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 // Main Component
 const StudentFeeTracker = () => {
@@ -1455,6 +1509,7 @@ const StudentFeeTracker = () => {
         isPaid: false,
         invoiceNo: "",
         paymentDate: "",
+        installments: [],
       }));
 
       const totalFeeAmount = courseFeeData.total_fee;
@@ -1572,6 +1627,20 @@ const StudentFeeTracker = () => {
     const feeToPay = currentStudent.feeBreakdown.find(
       (f) => f.order === orderId,
     );
+
+    if (!currentStatus || isEdit) {
+      const isEnrollment = feeToPay?.component_type === "Enrollment Fee" || feeToPay?.order === 1;
+      if (!isEnrollment) {
+        const enrollmentFee = currentStudent.feeBreakdown.find(
+          (f) => f.component_type === "Enrollment Fee" || f.order === 1
+        );
+        if (enrollmentFee && !enrollmentFee.isPaid) {
+          toast.error("Please submit/pay the Enrollment Fee in full before paying monthly fees.");
+          return;
+        }
+      }
+    }
+
     const amountNeeded = feeToPay
       ? feeToPay.amount - (feeToPay.partialPaid || 0)
       : 0;
@@ -1669,17 +1738,26 @@ const StudentFeeTracker = () => {
           : fee,
       );
     } else if (isEdit) {
-      updatedBreakdown = updatedBreakdown.map((fee) =>
-        fee.order === orderId
-          ? {
+      updatedBreakdown = updatedBreakdown.map((fee) => {
+        if (fee.order === orderId) {
+          const updatedInsts = fee.installments
+            ? fee.installments.map((inst) => ({
+                ...inst,
+                invoiceNo: invoiceNo,
+                date: paymentDate,
+              }))
+            : [];
+          return {
             ...fee,
             invoiceNo,
             paymentDate,
             isLateFinePaid: paidFineAmount > 0,
             lateFinePaidAmount: paidFineAmount > 0 ? paidFineAmount : 0,
-          }
-          : fee,
-      );
+            ...(fee.installments && { installments: updatedInsts }),
+          };
+        }
+        return fee;
+      });
     } else if (newIsPaid) {
       let remaining = paidAmount;
       const startIndex = updatedBreakdown.findIndex((f) => f.order === orderId);
@@ -1700,10 +1778,24 @@ const StudentFeeTracker = () => {
             continue;
           }
 
+          const currentInstallments = fee.installments ? [...fee.installments] : [];
+          if (fee.partialPaid > 0 && currentInstallments.length === 0) {
+            currentInstallments.push({
+              amount: fee.partialPaid,
+              date: fee.paymentDate || "Legacy",
+              invoiceNo: fee.invoiceNo || "Legacy"
+            });
+          }
+
           const needed = fee.amount - (fee.partialPaid || 0);
 
           if (remaining >= needed) {
             remaining -= needed;
+            const newInst = {
+              amount: needed,
+              date: paymentDate,
+              invoiceNo: invoiceNo,
+            };
             updatedBreakdown[i] = {
               ...fee,
               isPaid: true,
@@ -1712,11 +1804,18 @@ const StudentFeeTracker = () => {
               paymentDate: isTargetFee
                 ? paymentDate
                 : fee.paymentDate || paymentDate,
+              installments: [...currentInstallments, newInst],
             };
           } else if (remaining > 0) {
+            const newInst = {
+              amount: remaining,
+              date: paymentDate,
+              invoiceNo: invoiceNo,
+            };
             updatedBreakdown[i] = {
               ...fee,
               partialPaid: (fee.partialPaid || 0) + remaining,
+              installments: [...currentInstallments, newInst],
             };
             remaining = 0;
           } else {
@@ -1737,6 +1836,7 @@ const StudentFeeTracker = () => {
             invoiceNo: "",
             paymentDate: "",
             partialPaid: 0,
+            installments: [],
           }
           : fee,
       );
@@ -1771,6 +1871,16 @@ const StudentFeeTracker = () => {
       (f) => f.order === orderId,
     );
     if (!feeToPay) return;
+
+    if (!feeToPay.isLateFinePaid) {
+      const enrollmentFee = currentStudent.feeBreakdown.find(
+        (f) => f.component_type === "Enrollment Fee" || f.order === 1
+      );
+      if (enrollmentFee && !enrollmentFee.isPaid) {
+        toast.error("Please submit/pay the Enrollment Fee in full before paying monthly fees or fines.");
+        return;
+      }
+    }
 
     if (feeToPay.isLateFinePaid) {
       // Unpay fine directly
@@ -1818,6 +1928,15 @@ const StudentFeeTracker = () => {
   /* ================= EDIT LATE FINE ================= */
   const handleEditLateFine = (orderId, currentFine) => {
     if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+
+    const enrollmentFee = currentStudent.feeBreakdown.find(
+      (f) => f.component_type === "Enrollment Fee" || f.order === 1
+    );
+    if (enrollmentFee && !enrollmentFee.isPaid) {
+      toast.error("Please submit/pay the Enrollment Fee in full before overriding monthly fines.");
+      return;
+    }
+
     setEditingFineData({ orderId, currentFine });
     setShowEditFineModal(true);
   };
