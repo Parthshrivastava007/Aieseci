@@ -753,6 +753,69 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) =>
 };
 
 
+const SearchResultsModal = ({ isOpen, onClose, results, onSelect }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#1e293b] border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-2xl font-black text-white">Multiple Matches Found</h2>
+            <p className="text-slate-400 text-sm mt-1">
+              Select the student whose fee ledger you want to view.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition p-1 bg-slate-800 hover:bg-slate-700 rounded-lg"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto pr-1 space-y-3 mt-2 hide-scrollbar">
+          {results.map((student) => (
+            <div
+              key={student.id}
+              onClick={() => onSelect(student)}
+              className="bg-slate-900/50 hover:bg-blue-600/20 border border-slate-700/80 hover:border-blue-500/50 p-4 rounded-2xl cursor-pointer transition-all duration-200 group flex justify-between items-center"
+            >
+              <div>
+                <p className="text-white font-bold group-hover:text-blue-400 transition">
+                  {student.name}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                  <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-semibold">
+                    {student.course}
+                  </span>
+                  {student.rollNo ? (
+                    <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+                      {student.rollNo}
+                    </span>
+                  ) : (
+                    <span className="bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/20">
+                      CCC Student
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="text-slate-500 group-hover:text-blue-400 transition-colors">
+                <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const FeeTableRow = ({
   fee,
   onTogglePayment,
@@ -1133,6 +1196,9 @@ const StudentFeeTracker = () => {
   const [adminSearchRoll, setAdminSearchRoll] = useState("");
   const [loading, setLoading] = useState(false);
   const [testDate, setTestDate] = useState(""); // eslint-disable-line
+  const [searchType, setSearchType] = useState("rollNo"); // "rollNo" or "name"
+  const [searchResults, setSearchResults] = useState([]);
+  const [showResultsModal, setShowResultsModal] = useState(false);
 
   /* ================= MODAL STATE ================= */
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -1568,46 +1634,77 @@ const StudentFeeTracker = () => {
 
   /* ================= ADMIN SEARCH ================= */
   const handleAdminSearch = async () => {
-    if (!adminSearchRoll.trim()) {
-      toast.error("Please enter a roll number");
+    const queryStr = adminSearchRoll.trim();
+    if (!queryStr) {
+      toast.error(searchType === "rollNo" ? "Please enter a roll number" : "Please enter a student name");
       return;
     }
 
     setLoading(true);
     try {
-      const formattedRoll = adminSearchRoll.toUpperCase().includes("AFT-")
-        ? adminSearchRoll.replace(/\s+/g, "").toUpperCase()
-        : `AFT-${adminSearchRoll}`.replace(/\s+/g, "").toUpperCase();
+      if (searchType === "rollNo") {
+        const formattedRoll = queryStr.toUpperCase().includes("AFT-")
+          ? queryStr.replace(/\s+/g, "").toUpperCase()
+          : `AFT-${queryStr}`.replace(/\s+/g, "").toUpperCase();
 
-      let q = query(
-        collection(db, "enrollments"),
-        where("rollNo", "==", formattedRoll),
-      );
-
-      let snapshot = await getDocs(q);
-
-      // fallback
-      if (snapshot.empty) {
-        q = query(
+        let q = query(
           collection(db, "enrollments"),
-          where("rollNo", "==", adminSearchRoll.trim()),
+          where("rollNo", "==", formattedRoll),
         );
-        snapshot = await getDocs(q);
-      }
 
-      if (snapshot.empty) {
-        toast.error("Student not found");
-        setCurrentStudent(null);
-      } else {
-        const data = snapshot.docs[0].data();
-        data.id = snapshot.docs[0].id;
-        if (!data.feeBreakdown) {
-          toast.info("No fee records generated for this student.");
+        let snapshot = await getDocs(q);
+
+        // fallback
+        if (snapshot.empty) {
+          q = query(
+            collection(db, "enrollments"),
+            where("rollNo", "==", queryStr),
+          );
+          snapshot = await getDocs(q);
         }
-        setCurrentStudent(data);
-        toast.success("Student found");
+
+        if (snapshot.empty) {
+          toast.error("Student not found");
+          setCurrentStudent(null);
+        } else {
+          const data = snapshot.docs[0].data();
+          data.id = snapshot.docs[0].id;
+          if (!data.feeBreakdown) {
+            toast.info("No fee records generated for this student.");
+          }
+          setCurrentStudent(data);
+          toast.success("Student found");
+        }
+      } else {
+        // Search by Name: fetch all enrollments and perform case-insensitive substring filtering
+        const snapshot = await getDocs(collection(db, "enrollments"));
+        const matches = [];
+
+        snapshot.forEach((docSnap) => {
+          const student = { id: docSnap.id, ...docSnap.data() };
+          if (student.name && student.name.toLowerCase().includes(queryStr.toLowerCase())) {
+            matches.push(student);
+          }
+        });
+
+        if (matches.length === 0) {
+          toast.error(`No student found with name: ${queryStr}`);
+          setCurrentStudent(null);
+        } else if (matches.length === 1) {
+          const matchedStudent = matches[0];
+          if (!matchedStudent.feeBreakdown) {
+            toast.info("No fee records generated for this student.");
+          }
+          setCurrentStudent(matchedStudent);
+          toast.success("Student found");
+        } else {
+          // Multiple matches
+          setSearchResults(matches);
+          setShowResultsModal(true);
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Error searching for student");
     }
     setLoading(false);
@@ -2133,6 +2230,20 @@ const StudentFeeTracker = () => {
         studentName={currentStudent?.name}
       />
 
+      <SearchResultsModal
+        isOpen={showResultsModal}
+        onClose={() => setShowResultsModal(false)}
+        results={searchResults}
+        onSelect={(student) => {
+          if (!student.feeBreakdown) {
+            toast.info("No fee records generated for this student.");
+          }
+          setCurrentStudent(student);
+          setShowResultsModal(false);
+          toast.success("Student selected");
+        }}
+      />
+
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Sleek Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 gap-4">
@@ -2219,25 +2330,68 @@ const StudentFeeTracker = () => {
         {isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-gray-800/80 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-gray-700">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
-                Find Student
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">
+                  Find Student
+                </h3>
+                <div className="flex bg-gray-950/40 p-1 rounded-xl border border-gray-700/60">
+                  <button
+                    onClick={() => {
+                      setSearchType("rollNo");
+                      setAdminSearchRoll("");
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      searchType === "rollNo"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Roll Number
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSearchType("name");
+                      setAdminSearchRoll("");
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      searchType === "name"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Student Name
+                  </button>
+                </div>
+              </div>
               <div className="flex space-x-3">
                 <div className="flex items-center flex-1 bg-gray-900/50 border border-gray-600 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-blue-500 transition-all font-medium overflow-hidden">
-                  <span className="pl-4 pr-1 text-gray-400 font-bold select-none">
-                    AFT-
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="101"
-                    value={adminSearchRoll.replace(/^AFT-?/i, "")}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^AFT-?/i, "");
-                      setAdminSearchRoll(val ? `AFT-${val}` : "");
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleAdminSearch()}
-                    className="w-full py-3.5 pr-3.5 bg-transparent text-white placeholder-gray-500 outline-none"
-                  />
+                  {searchType === "rollNo" ? (
+                    <>
+                      <span className="pl-4 pr-1 text-gray-400 font-bold select-none">
+                        AFT-
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="101"
+                        value={adminSearchRoll.replace(/^AFT-?/i, "")}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/^AFT-?/i, "");
+                          setAdminSearchRoll(val ? `AFT-${val}` : "");
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && handleAdminSearch()}
+                        className="w-full py-3.5 pr-3.5 bg-transparent text-white placeholder-gray-500 outline-none"
+                      />
+                    </>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Enter student name..."
+                      value={adminSearchRoll}
+                      onChange={(e) => setAdminSearchRoll(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAdminSearch()}
+                      className="w-full py-3.5 px-4 bg-transparent text-white placeholder-gray-500 outline-none"
+                    />
+                  )}
                 </div>
                 <button
                   onClick={handleAdminSearch}

@@ -20,6 +20,33 @@ import EnrollmentTableBody from "../components/EnrollmentTableBody";
 import ExamMarksModal from "../components/ExamMarksModal";
 import StudentMarksModal from "../components/StudentMarksModal";
 
+const getEnrollmentDateObject = (entry) => {
+  if (entry.dateOfEnrollment) {
+    const parts = entry.dateOfEnrollment.includes("/")
+      ? entry.dateOfEnrollment.split("/")
+      : entry.dateOfEnrollment.split("-");
+
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      } else if (entry.dateOfEnrollment.includes("/")) {
+        // DD/MM/YYYY
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      } else {
+        // DD-MM-YYYY
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      }
+    }
+  }
+
+  if (entry.createdAt?.toDate) {
+    return entry.createdAt.toDate();
+  }
+
+  return null;
+};
+
 const allowedAdminEmail = "aieseci.anpara@gmail.com";
 const allowedAdminPassword = "Aieseci@220471";
 
@@ -43,6 +70,8 @@ const EnrollmentTable = () => {
   /* ================= FILTER ================= */
   const [searchRollNo, setSearchRollNo] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   /* ================= EDIT ================= */
   const [editId, setEditId] = useState(null);
@@ -204,7 +233,31 @@ const EnrollmentTable = () => {
         const matchesName = e.name?.toLowerCase().includes(search);
         const matchesCourse =
           selectedCourse === "" || e.course === selectedCourse;
-        return (matchesRoll || matchesName) && matchesCourse;
+
+        let matchesDate = true;
+        if (startDate || endDate) {
+          const enrollDate = getEnrollmentDateObject(e);
+          if (enrollDate) {
+            // Compare dates at midnight to avoid timezone issues
+            const d = new Date(enrollDate.getFullYear(), enrollDate.getMonth(), enrollDate.getDate());
+
+            if (startDate) {
+              const start = new Date(startDate);
+              const cleanStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+              if (d < cleanStart) matchesDate = false;
+            }
+            if (endDate) {
+              const end = new Date(endDate);
+              const cleanEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+              if (d > cleanEnd) matchesDate = false;
+            }
+          } else {
+            // No enrollment date was found, but a date filter is active: exclude this record.
+            matchesDate = false;
+          }
+        }
+
+        return (matchesRoll || matchesName) && matchesCourse && matchesDate;
       })
     : enrollments;
 
@@ -330,6 +383,10 @@ const EnrollmentTable = () => {
           selectedCourse={selectedCourse}
           setSelectedCourse={setSelectedCourse}
           courseOptions={courseOptions}
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
         />
       )}
 

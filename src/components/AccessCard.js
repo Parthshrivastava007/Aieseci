@@ -293,9 +293,11 @@ const AccessCard = ({
               <FaIdCard className="text-3xl text-yellow-400" />
             </motion.div>
             <h2 className="text-2xl font-black text-white">
-              Student Dashboard
+              {variant === "exam" ? "Exam Portal" : "Student Dashboard"}
             </h2>
-            <p className="text-sm text-gray-400 mt-2 font-medium">Log in to view enrollment</p>
+            <p className="text-sm text-gray-400 mt-2 font-medium">
+              {variant === "exam" ? "Log in to view your exams" : "Log in to view enrollment"}
+            </p>
           </div>
 
           {/* Toggle Tabs */}
@@ -368,7 +370,7 @@ const AccessCard = ({
                     onClick={() => handleAccess("student")}
                     className="w-full mt-2 py-3.5 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex justify-center items-center gap-2 group/btn"
                   >
-                    Enter Dashboard <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
+                    {variant === "exam" ? "Enter Exam Portal" : "Enter Dashboard"} <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
                   </motion.button>
                 </motion.div>
               ) : (
@@ -420,7 +422,7 @@ const AccessCard = ({
                     onClick={() => handleAccess("admin")}
                     className="w-full mt-2 py-3.5 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2 group/btn"
                   >
-                    Access Dashboard <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
+                    {variant === "exam" ? "Access Exam Management" : "Access Dashboard"} <FaArrowRight className="text-sm group-hover/btn:translate-x-1 transition-transform" />
                   </motion.button>
                 </motion.div>
               )}
