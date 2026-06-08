@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import CourseForm from "./components/CourseFrom";
 import EnrollmentTable from "./pages/EnrollementTable";
 import StudentFeeTracker from "./components/StudentFeeTracker";
+import ExamDashboard from "./components/ExamDashboard";
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
         <Route path="/courses" element={<Courses />} />
         <Route path="/enrollementtable" element={<EnrollmentTable />} />
         <Route path="/feetracker" element={<StudentFeeTracker />} />
+        <Route path="/exams" element={<ExamDashboard />} />
         <Route path="/contact" element={<Contact />} />
       </Routes>
     </Router>

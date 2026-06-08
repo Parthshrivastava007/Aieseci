@@ -753,6 +753,75 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) =>
 };
 
 
+const OneTimePaymentModal = ({ isOpen, onClose, onConfirm, studentName, loading }) => {
+  const [invoice, setInvoice] = React.useState("");
+
+  React.useEffect(() => {
+    if (isOpen) setInvoice("");
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (!invoice.trim()) return;
+    onConfirm(invoice.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#1e293b] border border-yellow-500/30 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(234,179,8,0.15)] transition-all">
+        <div className="w-16 h-16 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/30">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+
+        <h2 className="text-2xl font-black text-white text-center mb-2">One-Time Settlement</h2>
+        <p className="text-slate-400 text-center text-sm mb-6 leading-relaxed">
+          You are about to mark all installments for <span className="text-white font-bold">{studentName}</span> as fully paid. This will settle all monthly dues and waive late fines.
+        </p>
+
+        <div className="space-y-4 mb-8">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+              Invoice Number
+            </label>
+            <input
+              type="text"
+              value={invoice}
+              onChange={(e) => setInvoice(e.target.value)}
+              placeholder="e.g. INV-OTP-101"
+              className="w-full bg-slate-900/70 border border-slate-600 focus:border-yellow-500/50 rounded-2xl py-3.5 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-yellow-500/20 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 py-3.5 rounded-2xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition-all disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!invoice.trim() || loading}
+            onClick={handleConfirm}
+            className={`flex-1 py-3.5 rounded-2xl font-bold transition-all shadow-lg ${
+              invoice.trim() && !loading
+                ? "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-slate-900 shadow-yellow-500/10"
+                : "bg-gray-700 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {loading ? "Settling..." : "Confirm & Settle"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const SearchResultsModal = ({ isOpen, onClose, results, onSelect }) => {
   if (!isOpen) return null;
 
@@ -1206,6 +1275,7 @@ const StudentFeeTracker = () => {
   const [showEditFineModal, setShowEditFineModal] = useState(false);
   const [editingFineData, setEditingFineData] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showOneTimeModal, setShowOneTimeModal] = useState(false);
 
   /* ================= ACCESS HANDLER ================= */
   const handleAccess = async (role) => {
@@ -2106,39 +2176,63 @@ const StudentFeeTracker = () => {
   };
 
   /* ================= MARK ONE-TIME PAYMENT ================= */
-  const handleOneTimePayment = async () => {
+  const handleOneTimePayment = () => {
     if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+    setShowOneTimeModal(true);
+  };
 
-    const confirmed = window.confirm(
-      "Are you sure you want to mark all fees as paid via a one-time payment? This will settle all installments and waive any accumulated late fines.",
-    );
-    if (!confirmed) return;
-
-    const todayStr = formatDateToDMY(
-      testDate ? new Date(testDate) : new Date(),
-    );
-    const updatedBreakdown = currentStudent.feeBreakdown.map((fee) => ({
-      ...fee,
-      isPaid: true,
-      isLateFinePaid: true,
-      paymentDate: fee.isPaid ? fee.paymentDate : todayStr,
-      invoiceNo: fee.invoiceNo || `OTP-${Date.now().toString().slice(-6)}`,
-    }));
-
-    // Optimistic update
-    setCurrentStudent((prev) => ({
-      ...prev,
-      feeBreakdown: updatedBreakdown,
-      isOneTimePaid: true,
-    }));
-
+  const confirmOneTimePayment = async (trimmedInvoice) => {
+    setLoading(true);
     try {
+      // Uniqueness check
+      const enrollmentsRef = collection(db, "enrollments");
+      const snapshot = await getDocs(enrollmentsRef);
+      let isDuplicate = false;
+
+      snapshot.forEach((docSnap) => {
+        const student = docSnap.data();
+        if (student.feeBreakdown) {
+          student.feeBreakdown.forEach((f) => {
+            if (f.invoiceNo && f.invoiceNo.trim() === trimmedInvoice) {
+              isDuplicate = true;
+            }
+          });
+        }
+      });
+
+      if (isDuplicate) {
+        toast.error(`Invoice number "${trimmedInvoice}" is already used in another transaction.`);
+        setLoading(false);
+        return;
+      }
+
+      const todayStr = formatDateToDMY(
+        testDate ? new Date(testDate) : new Date(),
+      );
+
+      const updatedBreakdown = currentStudent.feeBreakdown.map((fee) => ({
+        ...fee,
+        isPaid: true,
+        isLateFinePaid: true,
+        paymentDate: fee.isPaid ? fee.paymentDate : todayStr,
+        invoiceNo: fee.isPaid ? fee.invoiceNo : trimmedInvoice,
+      }));
+
+      // Optimistic update
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: updatedBreakdown,
+        isOneTimePaid: true,
+      }));
+
       await updateDoc(doc(db, "enrollments", currentStudent.id), {
         feeBreakdown: updatedBreakdown,
         isOneTimePaid: true,
       });
       toast.success("Course marked as fully paid via one-time payment!");
-    } catch {
+      setShowOneTimeModal(false);
+    } catch (err) {
+      console.error(err);
       toast.error("Failed to update payment status");
       // Revert if failed
       setCurrentStudent((prev) => ({
@@ -2146,6 +2240,8 @@ const StudentFeeTracker = () => {
         feeBreakdown: currentStudent.feeBreakdown,
         isOneTimePaid: currentStudent.isOneTimePaid || false,
       }));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2242,6 +2338,14 @@ const StudentFeeTracker = () => {
           setShowResultsModal(false);
           toast.success("Student selected");
         }}
+      />
+
+      <OneTimePaymentModal
+        isOpen={showOneTimeModal}
+        onClose={() => setShowOneTimeModal(false)}
+        onConfirm={confirmOneTimePayment}
+        studentName={currentStudent?.name}
+        loading={loading}
       />
 
       <div className="max-w-7xl mx-auto space-y-8">

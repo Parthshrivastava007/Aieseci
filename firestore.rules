@@ -2,8 +2,26 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow access to exam collections
+    match /exam_courses/{document=**} {
+      allow read, write: if true;
+    }
+    match /exam_semesters/{document=**} {
+      allow read, write: if true;
+    }
+    match /exam_assignments/{document=**} {
+      allow read, write: if true;
+    }
+    match /exam_question_sets/{document=**} {
+      allow read, write: if true;
+    }
+    match /exam_questions/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Fallback for other collections (keep existing logic if any, otherwise allow during dev)
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true; 
     }
   }
 }
