@@ -373,6 +373,7 @@ const InvoiceModal = ({
   isLateFinePaid,
   lateFinePaidAmount,
   isFineOnly,
+  isCcc,
 }) => {
   const [invoice, setInvoice] = React.useState(initialInvoice || "");
   const [date, setDate] = React.useState("");
@@ -570,7 +571,7 @@ const InvoiceModal = ({
 
             <div>
               <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
-                Invoice No.
+                Invoice No. {isCcc && <span className="text-xs text-blue-400 font-normal lowercase">(optional for ccc)</span>}
               </label>
 
               <input
@@ -753,7 +754,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, studentName }) =>
 };
 
 
-const OneTimePaymentModal = ({ isOpen, onClose, onConfirm, studentName, loading }) => {
+const OneTimePaymentModal = ({ isOpen, onClose, onConfirm, studentName, loading, isCcc }) => {
   const [invoice, setInvoice] = React.useState("");
 
   React.useEffect(() => {
@@ -763,7 +764,7 @@ const OneTimePaymentModal = ({ isOpen, onClose, onConfirm, studentName, loading 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    if (!invoice.trim()) return;
+    if (!isCcc && !invoice.trim()) return;
     onConfirm(invoice.trim());
   };
 
@@ -784,7 +785,7 @@ const OneTimePaymentModal = ({ isOpen, onClose, onConfirm, studentName, loading 
         <div className="space-y-4 mb-8">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Invoice Number
+              Invoice Number {isCcc && <span className="text-xs text-blue-400 font-normal lowercase">(optional for ccc)</span>}
             </label>
             <input
               type="text"
@@ -805,10 +806,10 @@ const OneTimePaymentModal = ({ isOpen, onClose, onConfirm, studentName, loading 
             Cancel
           </button>
           <button
-            disabled={!invoice.trim() || loading}
+            disabled={(!isCcc && !invoice.trim()) || loading}
             onClick={handleConfirm}
             className={`flex-1 py-3.5 rounded-2xl font-bold transition-all shadow-lg ${
-              invoice.trim() && !loading
+              ((isCcc || invoice.trim()) && !loading)
                 ? "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-slate-900 shadow-yellow-500/10"
                 : "bg-gray-700 text-gray-500 cursor-not-allowed"
             }`}
@@ -1843,20 +1844,21 @@ const StudentFeeTracker = () => {
     isEdit = false,
     isFineOnly = false,
   ) => {
+    const isCcc = currentStudent?.course?.toLowerCase() === "ccc";
     if (newIsPaid || isEdit || isFineOnly) {
-      if (!invoiceNo || !invoiceNo.trim()) {
+      if (!isCcc && (!invoiceNo || !invoiceNo.trim())) {
         toast.error("Invoice number is required for a transaction.");
         return;
       }
 
-      const invoiceStr = invoiceNo.trim();
+      const invoiceStr = invoiceNo ? invoiceNo.trim() : "";
       const originalFee = currentStudent.feeBreakdown.find(
         (f) => f.order === orderId,
       );
       const originalInvoice = originalFee ? originalFee.invoiceNo : null;
 
-      // If the admin changed the invoice number or is providing a new one
-      if (originalInvoice !== invoiceStr) {
+      // If the admin changed the invoice number or is providing a new one, check for uniqueness (only if not empty)
+      if (invoiceStr && originalInvoice !== invoiceStr) {
         try {
           const enrollmentsRef = collection(db, "enrollments");
           const snapshot = await getDocs(enrollmentsRef);
@@ -2184,26 +2186,28 @@ const StudentFeeTracker = () => {
   const confirmOneTimePayment = async (trimmedInvoice) => {
     setLoading(true);
     try {
-      // Uniqueness check
-      const enrollmentsRef = collection(db, "enrollments");
-      const snapshot = await getDocs(enrollmentsRef);
-      let isDuplicate = false;
+      // Uniqueness check (only if invoice is provided)
+      if (trimmedInvoice) {
+        const enrollmentsRef = collection(db, "enrollments");
+        const snapshot = await getDocs(enrollmentsRef);
+        let isDuplicate = false;
 
-      snapshot.forEach((docSnap) => {
-        const student = docSnap.data();
-        if (student.feeBreakdown) {
-          student.feeBreakdown.forEach((f) => {
-            if (f.invoiceNo && f.invoiceNo.trim() === trimmedInvoice) {
-              isDuplicate = true;
-            }
-          });
+        snapshot.forEach((docSnap) => {
+          const student = docSnap.data();
+          if (student.feeBreakdown) {
+            student.feeBreakdown.forEach((f) => {
+              if (f.invoiceNo && f.invoiceNo.trim() === trimmedInvoice) {
+                isDuplicate = true;
+              }
+            });
+          }
+        });
+
+        if (isDuplicate) {
+          toast.error(`Invoice number "${trimmedInvoice}" is already used in another transaction.`);
+          setLoading(false);
+          return;
         }
-      });
-
-      if (isDuplicate) {
-        toast.error(`Invoice number "${trimmedInvoice}" is already used in another transaction.`);
-        setLoading(false);
-        return;
       }
 
       const todayStr = formatDateToDMY(
@@ -2310,6 +2314,7 @@ const StudentFeeTracker = () => {
         lateFine={pendingPayment?.lateFine}
         isLateFinePaid={pendingPayment?.isLateFinePaid}
         lateFinePaidAmount={pendingPayment?.lateFinePaidAmount}
+        isCcc={currentStudent?.course?.toLowerCase() === "ccc"}
       />
 
       <EditFineModal
@@ -2346,6 +2351,7 @@ const StudentFeeTracker = () => {
         onConfirm={confirmOneTimePayment}
         studentName={currentStudent?.name}
         loading={loading}
+        isCcc={currentStudent?.course?.toLowerCase() === "ccc"}
       />
 
       <div className="max-w-7xl mx-auto space-y-8">
