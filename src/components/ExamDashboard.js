@@ -19,6 +19,10 @@ import {
   setSecuritySettings,
   getAllAssignments,
   deassignExam,
+  renameSemester,
+  deleteSemester,
+  renameQuestionSet,
+  addQuestion,
 } from "../Backend/examService";
 import { courseFees } from "./CourseFeesData";
 import AccessCard from "./AccessCard";
@@ -34,9 +38,9 @@ import {
   FiLoader,
   FiFolder,
   FiTrash2,
-  // FiAlertTriangle,
   FiUsers,
   FiLock,
+  FiEdit2,
 } from "react-icons/fi";
 
 const shuffleArray = (array) => {
@@ -90,6 +94,39 @@ const ExamDashboard = () => {
     id: null,
     message: "",
   });
+
+  // Rename states
+  const [editingSemesterId, setEditingSemesterId] = useState(null);
+  const [editingSemesterName, setEditingSemesterName] = useState("");
+  const [editingSetId, setEditingSetId] = useState(null);
+  const [editingSetName, setEditingSetName] = useState("");
+
+  // Manual Question form states
+  const [manualText, setManualText] = useState("");
+  const [manualTextHindi, setManualTextHindi] = useState("");
+  const [manualOptA, setManualOptA] = useState("");
+  const [manualOptAHindi, setManualOptAHindi] = useState("");
+  const [manualOptB, setManualOptB] = useState("");
+  const [manualOptBHindi, setManualOptBHindi] = useState("");
+  const [manualOptC, setManualOptC] = useState("");
+  const [manualOptCHindi, setManualOptCHindi] = useState("");
+  const [manualOptD, setManualOptD] = useState("");
+  const [manualOptDHindi, setManualOptDHindi] = useState("");
+  const [manualCorrect, setManualCorrect] = useState("A");
+
+  const resetManualQuestionForm = () => {
+    setManualText("");
+    setManualTextHindi("");
+    setManualOptA("");
+    setManualOptAHindi("");
+    setManualOptB("");
+    setManualOptBHindi("");
+    setManualOptC("");
+    setManualOptCHindi("");
+    setManualOptD("");
+    setManualOptDHindi("");
+    setManualCorrect("A");
+  };
 
   /* ================= AUTH ================= */
   const [authenticated, setAuthenticated] = useState(false);
@@ -407,6 +444,95 @@ const ExamDashboard = () => {
       } finally {
         setLoading(false);
       }
+    } else if (type === "ENTIRE_SEMESTER") {
+      setLoading(true);
+      try {
+        await deleteSemester(id);
+        setSemesters(semesters.filter((sem) => sem.id !== id));
+        if (selectedSemester?.id === id) {
+          setSelectedSemester(null);
+          setSelectedSet(null);
+          setQuestionSets([]);
+          setQuestions([]);
+        }
+        toast.success("Semester and all its cascading contents deleted successfully");
+      } catch (error) {
+        toast.error("Failed to delete semester");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleDeleteSemesterPrompt = (semester, e) => {
+    e.stopPropagation();
+    setDeleteModal({
+      isOpen: true,
+      type: "ENTIRE_SEMESTER",
+      id: semester.id,
+      message: `Are you sure you want to delete "${semester.name}"? This will delete the semester, ALL its question sets, and ALL questions inside those sets.`,
+    });
+  };
+
+  const handleRenameSemesterPrompt = (semester, e) => {
+    e.stopPropagation();
+    setEditingSemesterId(semester.id);
+    setEditingSemesterName(semester.name);
+  };
+
+  const handleSaveSemesterRename = async (semesterId) => {
+    if (!editingSemesterName.trim()) {
+      toast.error("Semester name cannot be empty");
+      return;
+    }
+    setLoading(true);
+    try {
+      await renameSemester(semesterId, editingSemesterName.trim());
+      setSemesters(
+        semesters.map((sem) =>
+          sem.id === semesterId ? { ...sem, name: editingSemesterName.trim() } : sem
+        )
+      );
+      if (selectedSemester?.id === semesterId) {
+        setSelectedSemester((prev) => ({ ...prev, name: editingSemesterName.trim() }));
+      }
+      setEditingSemesterId(null);
+      toast.success("Semester renamed successfully");
+    } catch (error) {
+      toast.error("Failed to rename semester");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRenameSetPrompt = (set, e) => {
+    e.stopPropagation();
+    setEditingSetId(set.id);
+    setEditingSetName(set.title);
+  };
+
+  const handleSaveSetRename = async (setId) => {
+    if (!editingSetName.trim()) {
+      toast.error("Question set name cannot be empty");
+      return;
+    }
+    setLoading(true);
+    try {
+      await renameQuestionSet(setId, editingSetName.trim());
+      setQuestionSets(
+        questionSets.map((s) =>
+          s.id === setId ? { ...s, title: editingSetName.trim() } : s
+        )
+      );
+      if (selectedSet?.id === setId) {
+        setSelectedSet((prev) => ({ ...prev, title: editingSetName.trim() }));
+      }
+      setEditingSetId(null);
+      toast.success("Question set renamed successfully");
+    } catch (error) {
+      toast.error("Failed to rename question set");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -442,6 +568,90 @@ const ExamDashboard = () => {
     }
   };
 
+  const handleSaveManualQuestion = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedCourse || !selectedSemester || !selectedSet) {
+      toast.error("Please select a course, semester, and set first.");
+      return;
+    }
+
+    if (!manualText.trim()) {
+      toast.error("Question text is required.");
+      return;
+    }
+    if (!manualOptA.trim() || !manualOptB.trim() || !manualOptC.trim() || !manualOptD.trim()) {
+      toast.error("All four options (A, B, C, D) are required.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Auto-translate to Hindi if fields are left blank
+      toast.info("Translating missing Hindi fields...");
+
+      const qHindi = manualTextHindi.trim()
+        ? manualTextHindi.trim()
+        : await translateToHindi(manualText.trim());
+
+      const optAHindi = manualOptAHindi.trim()
+        ? manualOptAHindi.trim()
+        : await translateToHindi(manualOptA.trim());
+
+      const optBHindi = manualOptBHindi.trim()
+        ? manualOptBHindi.trim()
+        : await translateToHindi(manualOptB.trim());
+
+      const optCHindi = manualOptCHindi.trim()
+        ? manualOptCHindi.trim()
+        : await translateToHindi(manualOptC.trim());
+
+      const optDHindi = manualOptDHindi.trim()
+        ? manualOptDHindi.trim()
+        : await translateToHindi(manualOptD.trim());
+
+      const newQuestionData = {
+        text: manualText.trim(),
+        textHindi: qHindi,
+        options: {
+          A: manualOptA.trim(),
+          B: manualOptB.trim(),
+          C: manualOptC.trim(),
+          D: manualOptD.trim()
+        },
+        optionsHindi: {
+          A: optAHindi,
+          B: optBHindi,
+          C: optCHindi,
+          D: optDHindi
+        },
+        correctAnswer: manualCorrect,
+        courseId: selectedCourse.id,
+        semesterId: selectedSemester.id,
+        setId: selectedSet.id
+      };
+
+      await addQuestion(newQuestionData);
+      toast.success("Question manually added successfully!");
+      resetManualQuestionForm();
+
+      // Reload questions
+      const qs = await getQuestions(
+        selectedCourse.id,
+        selectedSemester.id,
+        selectedSet.id
+      );
+      setQuestions(qs);
+
+      // Switch back to questions list
+      setActiveTab("questions");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to add question.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !selectedCourse || !selectedSemester) return;
@@ -451,7 +661,11 @@ const ExamDashboard = () => {
 
     setLoading(true);
     try {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL ||
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://localhost:5000"
+          : "https://aieseci.onrender.com");
       const response = await axios.post(
         `${backendUrl}/api/parse-pdf`,
         formData,
@@ -718,19 +932,68 @@ const ExamDashboard = () => {
                   <FiFolder className="text-purple-400" /> Semesters
                 </h2>
                 <div className="space-y-2">
-                  {semesters.map((semester) => (
-                    <button
-                      key={semester.id}
-                      onClick={() => handleSemesterSelect(semester)}
-                      className={`w-full text-left p-3 rounded-xl transition-all ${
-                        selectedSemester?.id === semester.id
-                          ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
-                          : "hover:bg-gray-700/50 text-gray-400"
-                      }`}
-                    >
-                      {semester.name}
-                    </button>
-                  ))}
+                  {semesters.map((semester) => {
+                    const isEditing = editingSemesterId === semester.id;
+                    return (
+                      <div key={semester.id} className="flex gap-2 items-center w-full">
+                        {isEditing ? (
+                          <div className="flex gap-1.5 w-full items-center">
+                            <input
+                              type="text"
+                              value={editingSemesterName}
+                              onChange={(e) => setEditingSemesterName(e.target.value)}
+                              className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-purple-500 text-white"
+                              onKeyDown={(e) => e.key === "Enter" && handleSaveSemesterRename(semester.id)}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveSemesterRename(semester.id)}
+                              className="bg-green-600 hover:bg-green-500 text-white px-2.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingSemesterId(null)}
+                              className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleSemesterSelect(semester)}
+                              className={`w-full text-left p-3 rounded-xl transition-all overflow-hidden text-ellipsis whitespace-nowrap ${
+                                selectedSemester?.id === semester.id
+                                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                                  : "hover:bg-gray-700/50 text-gray-400"
+                              }`}
+                            >
+                              {semester.name}
+                            </button>
+                            {isAdmin && (
+                              <div className="flex gap-1 shrink-0">
+                                <button
+                                  onClick={(e) => handleRenameSemesterPrompt(semester, e)}
+                                  className="bg-gray-800 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 border border-gray-700 hover:border-blue-500/50 p-2.5 rounded-xl transition-all"
+                                  title="Rename Semester"
+                                >
+                                  <FiEdit2 size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteSemesterPrompt(semester, e)}
+                                  className="bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 border border-gray-700 hover:border-red-500/50 p-2.5 rounded-xl transition-all"
+                                  title="Delete Semester"
+                                >
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 {isAdmin && (
                   <div className="mt-4 flex gap-2">
@@ -758,29 +1021,68 @@ const ExamDashboard = () => {
                   <FiLayers className="text-pink-400" /> Question Sets
                 </h2>
                 <div className="space-y-2">
-                  {questionSets.map((set) => (
-                    <div key={set.id} className="flex gap-2">
-                      <button
-                        onClick={() => handleSetSelect(set)}
-                        className={`w-full text-left p-3 rounded-xl transition-all ${
-                          selectedSet?.id === set.id
-                            ? "bg-pink-600 text-white shadow-lg shadow-pink-500/20"
-                            : "hover:bg-gray-700/50 text-gray-400"
-                        }`}
-                      >
-                        {set.title}
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={(e) => handleDeleteSet(set.id, e)}
-                          className="bg-gray-800 hover:bg-red-500/20 text-gray-500 hover:text-red-400 border border-gray-700 hover:border-red-500/50 p-3 rounded-xl transition-all"
-                          title="Delete Set"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {questionSets.map((set) => {
+                    const isEditing = editingSetId === set.id;
+                    return (
+                      <div key={set.id} className="flex gap-2 items-center w-full">
+                        {isEditing ? (
+                          <div className="flex gap-1.5 w-full items-center">
+                            <input
+                              type="text"
+                              value={editingSetName}
+                              onChange={(e) => setEditingSetName(e.target.value)}
+                              className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-pink-500 text-white"
+                              onKeyDown={(e) => e.key === "Enter" && handleSaveSetRename(set.id)}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveSetRename(set.id)}
+                              className="bg-green-600 hover:bg-green-500 text-white px-2.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingSetId(null)}
+                              className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleSetSelect(set)}
+                              className={`w-full text-left p-3 rounded-xl transition-all overflow-hidden text-ellipsis whitespace-nowrap ${
+                                selectedSet?.id === set.id
+                                  ? "bg-pink-600 text-white shadow-lg shadow-pink-500/20"
+                                  : "hover:bg-gray-700/50 text-gray-400"
+                              }`}
+                            >
+                              {set.title}
+                            </button>
+                            {isAdmin && (
+                              <div className="flex gap-1 shrink-0">
+                                <button
+                                  onClick={(e) => handleRenameSetPrompt(set, e)}
+                                  className="bg-gray-800 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 border border-gray-700 hover:border-blue-500/50 p-2.5 rounded-xl transition-all"
+                                  title="Rename Set"
+                                >
+                                  <FiEdit2 size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteSet(set.id, e)}
+                                  className="bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 border border-gray-700 hover:border-red-500/50 p-2.5 rounded-xl transition-all"
+                                  title="Delete Set"
+                                >
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 {isAdmin && (
                   <div className="mt-4 flex gap-2">
@@ -985,6 +1287,17 @@ const ExamDashboard = () => {
                       className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === "upload" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-gray-200"}`}
                     >
                       Upload PDF
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        setActiveTab("add-question");
+                        resetManualQuestionForm();
+                      }}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === "add-question" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-gray-200"}`}
+                    >
+                      Add Question
                     </button>
                   )}
                   {isAdmin && (
@@ -1205,6 +1518,205 @@ const ExamDashboard = () => {
                           </table>
                         </div>
                       )}
+                    </div>
+                  ) : activeTab === "add-question" ? (
+                    <div className="bg-gray-800/50 backdrop-blur-md p-8 rounded-3xl border border-gray-700 shadow-xl space-y-6 animate-in fade-in slide-in-from-top-4 duration-250">
+                      <div className="border-b border-gray-700 pb-4">
+                        <h3 className="text-xl font-bold flex items-center gap-2">
+                          <FiPlus className="text-blue-400" /> Add Question Manually
+                        </h3>
+                        <p className="text-gray-400 text-sm mt-1">
+                          Fill in the details below. Missing Hindi fields will be translated automatically using Google Translate.
+                        </p>
+                      </div>
+
+                      <form onSubmit={handleSaveManualQuestion} className="space-y-6">
+                        {/* Question Text */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-300 mb-2">
+                              Question Text (English) <span className="text-red-400">*</span>
+                            </label>
+                            <textarea
+                              rows="3"
+                              value={manualText}
+                              onChange={(e) => setManualText(e.target.value)}
+                              placeholder="Type the question in English..."
+                              className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-300 mb-2">
+                              Question Text (Hindi) <span className="text-gray-500">(Optional - Auto-translated if blank)</span>
+                            </label>
+                            <textarea
+                              rows="3"
+                              value={manualTextHindi}
+                              onChange={(e) => setManualTextHindi(e.target.value)}
+                              placeholder="Type the question in Hindi or leave blank to auto-translate..."
+                              className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Options */}
+                        <div className="space-y-4">
+                          <h4 className="text-md font-bold text-gray-300 border-b border-gray-750 pb-2">Options</h4>
+                          
+                          {/* Option A */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option A (English) <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptA}
+                                onChange={(e) => setManualOptA(e.target.value)}
+                                placeholder="Option A in English"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option A (Hindi) <span className="text-gray-500">(Optional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptAHindi}
+                                onChange={(e) => setManualOptAHindi(e.target.value)}
+                                placeholder="Option A in Hindi or leave blank"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Option B */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option B (English) <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptB}
+                                onChange={(e) => setManualOptB(e.target.value)}
+                                placeholder="Option B in English"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option B (Hindi) <span className="text-gray-500">(Optional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptBHindi}
+                                onChange={(e) => setManualOptBHindi(e.target.value)}
+                                placeholder="Option B in Hindi or leave blank"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Option C */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option C (English) <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptC}
+                                onChange={(e) => setManualOptC(e.target.value)}
+                                placeholder="Option C in English"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option C (Hindi) <span className="text-gray-500">(Optional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptCHindi}
+                                onChange={(e) => setManualOptCHindi(e.target.value)}
+                                placeholder="Option C in Hindi or leave blank"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Option D */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option D (English) <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptD}
+                                onChange={(e) => setManualOptD(e.target.value)}
+                                placeholder="Option D in English"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Option D (Hindi) <span className="text-gray-500">(Optional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualOptDHindi}
+                                onChange={(e) => setManualOptDHindi(e.target.value)}
+                                placeholder="Option D in Hindi or leave blank"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Correct Answer & Actions */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-300 mb-2">
+                              Correct Option <span className="text-red-400">*</span>
+                            </label>
+                            <select
+                              value={manualCorrect}
+                              onChange={(e) => setManualCorrect(e.target.value)}
+                              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
+                              required
+                            >
+                              <option value="A">Option A</option>
+                              <option value="B">Option B</option>
+                              <option value="C">Option C</option>
+                              <option value="D">Option D</option>
+                            </select>
+                          </div>
+                          
+                          <div className="flex gap-4">
+                            <button
+                              type="button"
+                              onClick={resetManualQuestionForm}
+                              className="flex-1 bg-gray-750 hover:bg-gray-700 text-gray-200 border border-gray-700 font-bold py-3 px-6 rounded-xl transition-all"
+                            >
+                              Clear Form
+                            </button>
+                            <button
+                              type="submit"
+                              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]"
+                            >
+                              Save Question
+                            </button>
+                          </div>
+                        </div>
+                      </form>
                     </div>
                   ) : null}
                 </div>

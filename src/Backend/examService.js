@@ -195,3 +195,43 @@ export const setSecuritySettings = async (accessPin, isEnabled) => {
   const docRef = doc(db, "exam_settings", "security");
   await setDoc(docRef, { accessPin, isEnabled });
 };
+
+// Rename Semester
+export const renameSemester = async (semesterId, newName) => {
+  const ref = doc(db, COLLECTIONS.SEMESTERS, semesterId);
+  await updateDoc(ref, { name: newName });
+};
+
+// Delete Semester and cascadingly delete sets and questions
+export const deleteSemester = async (semesterId) => {
+  // 1. Delete all questions in this semester
+  const questionsQ = query(
+    collection(db, COLLECTIONS.QUESTIONS),
+    where("semesterId", "==", semesterId)
+  );
+  const questionsSnap = await getDocs(questionsQ);
+  const deleteQuestionsPromises = questionsSnap.docs.map((docSnap) =>
+    deleteDoc(doc(db, COLLECTIONS.QUESTIONS, docSnap.id))
+  );
+  await Promise.all(deleteQuestionsPromises);
+
+  // 2. Delete all question sets in this semester
+  const setsQ = query(
+    collection(db, COLLECTIONS.SETS),
+    where("semesterId", "==", semesterId)
+  );
+  const setsSnap = await getDocs(setsQ);
+  const deleteSetsPromises = setsSnap.docs.map((docSnap) =>
+    deleteDoc(doc(db, COLLECTIONS.SETS, docSnap.id))
+  );
+  await Promise.all(deleteSetsPromises);
+
+  // 3. Delete the semester itself
+  await deleteDoc(doc(db, COLLECTIONS.SEMESTERS, semesterId));
+};
+
+// Rename Question Set
+export const renameQuestionSet = async (setId, newTitle) => {
+  const ref = doc(db, COLLECTIONS.SETS, setId);
+  await updateDoc(ref, { title: newTitle });
+};

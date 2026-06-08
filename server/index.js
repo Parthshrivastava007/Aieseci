@@ -70,6 +70,10 @@ function parseMCQs(text) {
   return questions;
 }
 
+app.get("/", (req, res) => {
+  res.send("Exam Backend is running!");
+});
+
 app.post("/api/parse-pdf", upload.single("pdf"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No file uploaded.");
