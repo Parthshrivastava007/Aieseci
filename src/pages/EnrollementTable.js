@@ -5,20 +5,18 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  query,
-  where,
   getDoc,
 } from "firebase/firestore";
 import { db } from "../Backend/firebase";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import * as XLSX from "xlsx";
-
-import AccessCard from "../components/AccessCard";
 import EnrollmentFilters from "../components/EnrollmentFilters";
 import EnrollmentTableBody from "../components/EnrollmentTableBody";
 import ExamMarksModal from "../components/ExamMarksModal";
 import StudentMarksModal from "../components/StudentMarksModal";
+import { useAuth } from "../context/AuthContext";
+import { FaLock } from "react-icons/fa";
 
 const getEnrollmentDateObject = (entry) => {
   if (entry.dateOfEnrollment) {
@@ -47,25 +45,29 @@ const getEnrollmentDateObject = (entry) => {
   return null;
 };
 
-const allowedAdminEmail = "aieseci.anpara@gmail.com";
-const allowedAdminPassword = "Aieseci@220471";
-
 const EnrollmentTable = () => {
-  /* ================= STUDENT ================= */
-  const [studentName, setStudentName] = useState("");
-  const [studentRollNumber, setStudentRollNumber] = useState("");
-
-  /* ================= ADMIN ================= */
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const { user, isAuthenticated, isAdmin: authIsAdmin } = useAuth();
 
   /* ================= AUTH ================= */
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
   /* ================= DATA ================= */
   const [enrollments, setEnrollments] = useState([]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAuthenticated(true);
+      setIsAdmin(authIsAdmin);
+      if (!authIsAdmin && user && user.enrollment) {
+        setEnrollments([user.enrollment]);
+      }
+    } else {
+      setAuthenticated(false);
+      setIsAdmin(false);
+      setEnrollments([]);
+    }
+  }, [isAuthenticated, authIsAdmin, user]);
 
   /* ================= FILTER ================= */
   const [searchRollNo, setSearchRollNo] = useState("");
@@ -83,74 +85,6 @@ const EnrollmentTable = () => {
 
   const [showStudentMarks, setShowStudentMarks] = useState(false);
   const [studentForMarks, setStudentForMarks] = useState(null);
-
-  /* ================= ACCESS HANDLER ================= */
-  const handleAccess = async (role) => {
-    setErrorMessage("");
-
-    // -------- ADMIN --------
-    if (role === "admin") {
-      if (
-        adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
-        adminPassword === allowedAdminPassword
-      ) {
-        setIsAdmin(true);
-        setAuthenticated(true);
-        toast.success("Admin access granted");
-      } else {
-        setErrorMessage("Invalid admin credentials");
-        toast.error("Invalid admin credentials");
-      }
-      return;
-    }
-
-    // -------- STUDENT --------
-    try {
-      const formattedRoll = `AFT-${studentRollNumber}`
-        .replace(/\s+/g, "")
-        .toUpperCase();
-
-      let q = query(
-        collection(db, "enrollments"),
-        where("rollNo", "==", formattedRoll),
-      );
-
-      let snapshot = await getDocs(q);
-
-      // 🔥 fallback for old data (without AFT)
-      if (snapshot.empty) {
-        q = query(
-          collection(db, "enrollments"),
-          where("rollNo", "==", studentRollNumber.trim()),
-        );
-
-        snapshot = await getDocs(q);
-      }
-
-      if (snapshot.empty) {
-        toast.error("Student not found");
-        return;
-      }
-
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      if (data[0].name?.trim().toLowerCase() !== studentName.trim().toLowerCase()) {
-        toast.error("Roll number and name do not match");
-        setErrorMessage("Roll number and name do not match");
-        return;
-      }
-
-      setEnrollments(data);
-      setIsAdmin(false);
-      setAuthenticated(true);
-      toast.success("Student access granted");
-    } catch {
-      toast.error("Something went wrong");
-    }
-  };
 
   /* ================= FETCH ADMIN DATA ================= */
   const fetchAdminData = async () => {
@@ -317,37 +251,22 @@ const EnrollmentTable = () => {
     }
   };
 
-  /* ================= LOGOUT ================= */
-  const handleLogout = () => {
-    setAuthenticated(false);
-    setIsAdmin(false);
-    setEnrollments([]);
-    setStudentName("");
-    setStudentRollNumber("");
-    setAdminEmail("");
-    setAdminPassword("");
-    toast.info("Logged out successfully");
-  };
+  // Logout handled globally in NavBar
 
   /* ================= AUTH SCREEN ================= */
   if (!authenticated) {
     return (
-      <>
-        <ToastContainer />
-        <AccessCard
-          studentName={studentName}
-          setStudentName={setStudentName}
-          studentRollNumber={studentRollNumber}
-          setStudentRollNumber={setStudentRollNumber}
-          adminEmail={adminEmail}
-          setAdminEmail={setAdminEmail}
-          adminPassword={adminPassword}
-          setAdminPassword={setAdminPassword}
-          handleAccess={handleAccess}
-          errorMessage={errorMessage}
-          variant="dashboard"
-        />
-      </>
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-6 text-white font-sans">
+        <div className="max-w-md w-full bg-gray-800/50 backdrop-blur-md border border-gray-700/50 rounded-3xl p-8 text-center shadow-xl">
+          <div className="w-16 h-16 bg-gray-900 border border-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <FaLock className="text-3xl text-yellow-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-4">Admissions Portal Locked</h2>
+          <p className="text-gray-400 mb-6 font-medium leading-relaxed">
+            Only accessible by admin only
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -366,12 +285,6 @@ const EnrollmentTable = () => {
             className="bg-blue-600 px-4 py-2 rounded"
           >
             Download Excel
-          </button>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 px-4 py-2 rounded"
-          >
-            Logout
           </button>
         </div>
       </div>

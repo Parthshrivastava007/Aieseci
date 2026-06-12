@@ -212,7 +212,7 @@ const Footer = () => {
                     Class Hours
                   </h5>
                   <p className="text-gray-300 text-sm">
-                    Mon - Sat: 9:00 AM - 7:00 PM
+                    Mon - Sat: 9:00 AM - 6:00 PM
                   </p>
                 </div>
               </div>

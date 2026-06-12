@@ -245,7 +245,7 @@ const Contact = () => {
     {
       icon: HiOutlineClock,
       title: "Working Hours",
-      details: ["Mon - Sat: 9:00 AM - 7:00 PM", "Sunday: Closed"],
+      details: ["Mon - Sat: 9:00 AM - 6:00 PM", "Sunday: Closed"],
       color: "from-orange-400 to-orange-600",
       bgColor: "bg-orange-500/10",
       iconColor: "text-orange-400",

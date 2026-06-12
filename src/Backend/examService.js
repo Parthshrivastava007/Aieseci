@@ -150,13 +150,17 @@ export const getAssignment = async (assignmentId) => {
   return null;
 };
 
-export const submitExam = async (assignmentId, score) => {
+export const submitExam = async (assignmentId, score, totalQuestions = null) => {
   const ref = doc(db, COLLECTIONS.ASSIGNMENTS, assignmentId);
-  await updateDoc(ref, {
+  const updateData = {
     status: "completed",
     score: score,
     submittedAt: serverTimestamp()
-  });
+  };
+  if (totalQuestions !== null) {
+    updateData.totalQuestions = totalQuestions;
+  }
+  await updateDoc(ref, updateData);
 };
 
 export const saveExamProgress = async (assignmentId, savedAnswers, timeLeft) => {

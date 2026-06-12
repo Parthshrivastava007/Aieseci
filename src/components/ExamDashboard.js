@@ -25,8 +25,9 @@ import {
   addQuestion,
 } from "../Backend/examService";
 import { courseFees } from "./CourseFeesData";
-import AccessCard from "./AccessCard";
+import { FaLock } from "react-icons/fa";
 import StudentExamPortal from "./StudentExamPortal";
+import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import {
   FiUpload,
@@ -129,13 +130,25 @@ const ExamDashboard = () => {
   };
 
   /* ================= AUTH ================= */
+  const { user, isAuthenticated, isAdmin: authIsAdmin } = useAuth();
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [studentName, setStudentName] = useState("");
   const [studentRollNumber, setStudentRollNumber] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAuthenticated(true);
+      setIsAdmin(authIsAdmin);
+      if (!authIsAdmin && user) {
+        setStudentName(user.name);
+        setStudentRollNumber(user.rollNo);
+      }
+    } else {
+      setAuthenticated(false);
+      setIsAdmin(false);
+    }
+  }, [isAuthenticated, authIsAdmin, user]);
 
   useEffect(() => {
     if (authenticated && isAdmin) {
@@ -239,50 +252,9 @@ const ExamDashboard = () => {
     toast.info(`Generated random PIN: ${randomPin}. Save settings to apply.`);
   };
 
-  const allowedAdminEmail = "aieseci.anpara@gmail.com";
-  const allowedAdminPassword = "Aieseci@220471";
+  // handleAccess is now processed globally in the navbar
 
-  const handleAccess = async (role) => {
-    setErrorMessage("");
-
-    if (role === "admin") {
-      if (
-        adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
-        adminPassword === allowedAdminPassword
-      ) {
-        setIsAdmin(true);
-        setAuthenticated(true);
-        toast.success("Admin access granted");
-      } else {
-        setErrorMessage("Invalid admin credentials");
-        toast.error("Invalid admin credentials");
-      }
-      return;
-    }
-
-    if (studentName.trim() && studentRollNumber.trim()) {
-      setIsAdmin(false);
-      setAuthenticated(true);
-      toast.success("Student access granted");
-    } else {
-      setErrorMessage("Please enter both Name and Roll Number");
-      toast.error("Name and Roll Number required");
-    }
-  };
-
-  const handleLogout = () => {
-    setAuthenticated(false);
-    setIsAdmin(false);
-    setStudentName("");
-    setStudentRollNumber("");
-    setAdminEmail("");
-    setAdminPassword("");
-    setSelectedCourse(null);
-    setSelectedSemester(null);
-    setSelectedSet(null);
-    setQuestions([]);
-    toast.info("Logged out successfully");
-  };
+  // Logout handled globally in NavBar
 
   useEffect(() => {
     if (authenticated) {
@@ -803,18 +775,18 @@ const ExamDashboard = () => {
         return;
       }
 
-      // Fetch all questions in the set if randomize is active
+      // Fetch all questions in the set to get the count
+      const qs = await getQuestions(
+        selectedCourse.id,
+        selectedSemester.id,
+        selectedSet.id
+      );
+      const totalQuestionsCount = qs.length;
+
       let questionOrder = null;
-      if (randomizeQuestions) {
-        const qs = await getQuestions(
-          selectedCourse.id,
-          selectedSemester.id,
-          selectedSet.id
-        );
-        if (qs.length > 0) {
-          const shuffledQs = shuffleArray(qs);
-          questionOrder = shuffledQs.map((q) => q.id);
-        }
+      if (randomizeQuestions && qs.length > 0) {
+        const shuffledQs = shuffleArray(qs);
+        questionOrder = shuffledQs.map((q) => q.id);
       }
 
       await assignExam({
@@ -827,6 +799,7 @@ const ExamDashboard = () => {
         setId: selectedSet.id,
         setTitle: selectedSet.title,
         duration: parseInt(examDuration) || 90,
+        totalQuestions: totalQuestionsCount,
         ...(questionOrder && { questionOrder }),
       });
 
@@ -844,22 +817,17 @@ const ExamDashboard = () => {
 
   if (!authenticated) {
     return (
-      <>
-        <ToastContainer theme="dark" />
-        <AccessCard
-          studentName={studentName}
-          setStudentName={setStudentName}
-          studentRollNumber={studentRollNumber}
-          setStudentRollNumber={setStudentRollNumber}
-          adminEmail={adminEmail}
-          setAdminEmail={setAdminEmail}
-          adminPassword={adminPassword}
-          setAdminPassword={setAdminPassword}
-          handleAccess={handleAccess}
-          errorMessage={errorMessage}
-          variant="exam"
-        />
-      </>
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white font-sans">
+        <div className="max-w-md w-full bg-gray-800/50 backdrop-blur-md border border-gray-700/50 rounded-3xl p-8 text-center shadow-xl">
+          <div className="w-16 h-16 bg-gray-900 border border-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <FaLock className="text-3xl text-yellow-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-4">Exam Portal Locked</h2>
+          <p className="text-gray-400 mb-6 font-medium leading-relaxed">
+            Please log in using the button in the navigation bar to access the Exam Dashboard or complete your assignments.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -893,12 +861,6 @@ const ExamDashboard = () => {
               : "View your available courses and exam questions."}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-500 text-white border border-red-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)] hover:shadow-[0_0_25px_rgba(220,38,38,0.7)]"
-        >
-          Log Out
-        </button>
       </div>
 
       {isAdmin ? (

@@ -10,10 +10,87 @@ import {
 import { toast } from "react-toastify";
 import { FiCheckCircle, FiPlayCircle, FiAward, FiLock } from "react-icons/fi";
 import LogoAiseci from "../assets/Images/LogoAiseci.png";
+import { db } from "../Backend/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import StudentExamMarksModal from "./StudentMarksModal";
+
+const UnlockCountdown = ({ submittedAt, onUnlock }) => { //eslint-disable-line
+  const [timeLeftStr, setTimeLeftStr] = useState("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      if (!submittedAt) return;
+      const submissionTime = submittedAt.seconds ? submittedAt.seconds * 1000 : new Date(submittedAt).getTime();
+      const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
+      const remainingMs = releaseTime - Date.now();
+
+      if (remainingMs <= 0) {
+        setTimeLeftStr("");
+        if (onUnlock) onUnlock();
+        return;
+      }
+
+      const hours = Math.floor(remainingMs / (3600 * 1000));
+      const minutes = Math.floor((remainingMs % (3600 * 1000)) / (60 * 1000));
+      const seconds = Math.floor((remainingMs % (60 * 1000)) / 1000);
+      setTimeLeftStr(`${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [submittedAt, onUnlock]);
+
+  if (!timeLeftStr) return null;
+
+  return (
+    <span className="text-xs text-yellow-500 font-semibold block mt-1">
+      Unlocks in {timeLeftStr}
+    </span>
+  );
+};
 
 const StudentExamPortal = ({ name, rollNumber }) => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showMarksModal, setShowMarksModal] = useState(false);
+  const [studentDoc, setStudentDoc] = useState(null);
+
+
+
+  const isReleaseTimePassed = (submittedAt) => { //eslint-disable-line
+    if (!submittedAt) return false;
+    const submissionTime = submittedAt.seconds ? submittedAt.seconds * 1000 : new Date(submittedAt).getTime();
+    const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
+    return Date.now() >= releaseTime;
+  };
+
+  const handleOpenMarksModal = async () => {
+    setShowMarksModal(true);
+    if (!studentDoc) {
+      try {
+        const formattedRoll = rollNumber.toUpperCase().includes("AFT-")
+          ? rollNumber.replace(/\s+/g, "").toUpperCase()
+          : `AFT-${rollNumber}`.replace(/\s+/g, "").toUpperCase();
+
+        const q = query(
+          collection(db, "enrollments"),
+          where("rollNo", "==", formattedRoll)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const sData = snapshot.docs[0].data();
+          sData.id = snapshot.docs[0].id;
+          setStudentDoc(sData);
+        } else {
+          setStudentDoc({ name, rollNo: formattedRoll });
+        }
+      } catch (error) {
+        console.error("Error fetching student doc for marks modal:", error);
+        setStudentDoc({ name, rollNo: rollNumber });
+      }
+    }
+  };
 
   // Exam Mode States
   const [activeExam, setActiveExam] = useState(null); // The assignment being taken
@@ -34,6 +111,7 @@ const StudentExamPortal = ({ name, rollNumber }) => {
   const [pinRequired, setPinRequired] = useState(false); //eslint-disable-line
   const [dbPin, setDbPin] = useState("");
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
   const [enteredPin, setEnteredPin] = useState("");
   const [examToUnlock, setExamToUnlock] = useState(null);
 
@@ -203,22 +281,17 @@ const StudentExamPortal = ({ name, rollNumber }) => {
     await performSubmit();
   };
 
-  const handleManualSubmit = async () => {
-    const confirm = window.confirm(
-      "Are you sure you want to submit? You cannot change your answers after submitting.",
-    );
-    if (confirm) {
-      await performSubmit();
-    }
+  const handleManualSubmit = () => {
+    setShowSubmitConfirmModal(true);
   };
 
   const performSubmit = async () => {
     setLoading(true);
     try {
       const finalScore = calculateScore();
-      await submitExam(activeExam.id, finalScore);
+      await submitExam(activeExam.id, finalScore, questions.length);
       toast.success(
-        `Exam submitted successfully! Your score: ${finalScore}/${questions.length}`,
+        "Exam submitted successfully! Marks will be available in your Marks Portal after 24 hours.",
       );
       setActiveExam(null);
       fetchAssignments(); // refresh list
@@ -240,7 +313,7 @@ const StudentExamPortal = ({ name, rollNumber }) => {
     setLoading(true);
     try {
       const finalScore = calculateScore();
-      await submitExam(activeExam.id, finalScore);
+      await submitExam(activeExam.id, finalScore, questions.length);
       toast.error("Exam automatically submitted! You were caught switching tabs or leaving the exam window 3 times.");
       setActiveExam(null);
       fetchAssignments();
@@ -578,7 +651,19 @@ const StudentExamPortal = ({ name, rollNumber }) => {
 
   // DASHBOARD RENDER
   return (
-    <div className="max-w-7xl mx-auto mt-8 px-4 sm:px-0">
+    <div className="max-w-7xl mx-auto mt-8 px-4 sm:px-0 space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-800/60 backdrop-blur-xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-gray-700 gap-4">
+        <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 tracking-tight text-center sm:text-left">
+          Student Exam Dashboard
+        </h2>
+        <button
+          onClick={handleOpenMarksModal}
+          className="bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] flex items-center gap-2"
+        >
+          <FiAward /> View Academic Performance / Marks
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {assignments.length === 0 ? (
           <div className="col-span-full bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-3xl p-12 text-center">
@@ -638,13 +723,32 @@ const StudentExamPortal = ({ name, rollNumber }) => {
               </div>
 
               {assignment.status === "completed" ? (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
-                  <span className="text-green-400 font-bold uppercase text-xs tracking-widest block mb-1">
-                    Your Score
+                <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-2">
+                  <span className="text-green-400 font-bold uppercase text-xs tracking-widest block">
+                    Exam Completed
                   </span>
-                  <span className="text-3xl font-black text-white">
-                    {assignment.score}
-                  </span>
+                  
+                  {/* {isReleaseTimePassed(assignment.submittedAt) ? (
+                    <button
+                      onClick={handleOpenMarksModal}
+                      className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white border border-green-500 hover:scale-[1.02] font-bold rounded-xl text-sm transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                    >
+                      <FiAward /> View Marks
+                    </button>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <button
+                        disabled
+                        className="mt-2 px-4 py-2 bg-gray-700 text-gray-500 font-bold rounded-xl text-sm cursor-not-allowed flex items-center gap-2 border border-gray-650"
+                      >
+                        <FiLock /> View Marks
+                      </button>
+                      <UnlockCountdown 
+                        submittedAt={assignment.submittedAt} 
+                        onUnlock={() => fetchAssignments()}
+                      />
+                    </div>
+                  )} */}
                 </div>
               ) : (
                 <button
@@ -705,6 +809,68 @@ const StudentExamPortal = ({ name, rollNumber }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-gray-800 border border-gray-700 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="bg-blue-500/20 p-4 rounded-full text-blue-400 animate-pulse">
+                <FiAward size={32} />
+              </div>
+            </div>
+            <h3 className="text-2xl font-black text-white">Submit Exam?</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Are you sure you want to submit? You cannot change your answers after submitting.
+            </p>
+            {activeExam && (
+              <div className="bg-gray-900/60 border border-gray-700/40 rounded-2xl p-4 grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
+                    Questions Attempted
+                  </span>
+                  <span className="text-white font-black text-lg">
+                    {Object.keys(answers).length} / {questions.length}
+                  </span>
+                </div>
+                <div className="text-center">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
+                    Remaining Time
+                  </span>
+                  <span className="text-yellow-400 font-black font-mono text-lg">
+                    {formatTime(timeLeft)}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubmitConfirmModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-650 border border-gray-600 rounded-xl font-bold transition-all text-sm text-gray-300"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={async () => {
+                  setShowSubmitConfirmModal(false);
+                  await performSubmit();
+                }}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-white transition-all shadow-lg shadow-blue-500/30 text-sm uppercase tracking-wider"
+              >
+                Submit Exam
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Marks Modal */}
+      {showMarksModal && studentDoc && (
+        <StudentExamMarksModal
+          student={studentDoc}
+          onClose={() => setShowMarksModal(false)}
+        />
       )}
     </div>
   );

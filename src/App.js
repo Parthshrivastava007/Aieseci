@@ -9,22 +9,27 @@ import CourseForm from "./components/CourseFrom";
 import EnrollmentTable from "./pages/EnrollementTable";
 import StudentFeeTracker from "./components/StudentFeeTracker";
 import ExamDashboard from "./components/ExamDashboard";
+import Profile from "./pages/Profile";
+import { AuthProvider } from "./context/AuthContext";
 
 const App = () => {
   return (
-    <Router>
-      <Navbar />
-      <Toaster position="top-right" reverseOrder={false} />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/enroll" element={<CourseForm />} />
-        <Route path="/courses" element={<Courses />} />
-        <Route path="/enrollementtable" element={<EnrollmentTable />} />
-        <Route path="/feetracker" element={<StudentFeeTracker />} />
-        <Route path="/exams" element={<ExamDashboard />} />
-        <Route path="/contact" element={<Contact />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Navbar />
+        <Toaster position="top-right" reverseOrder={false} />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/enroll" element={<CourseForm />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/enrollementtable" element={<EnrollmentTable />} />
+          <Route path="/feetracker" element={<StudentFeeTracker />} />
+          <Route path="/exams" element={<ExamDashboard />} />
+          <Route path="/contact" element={<Contact />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 

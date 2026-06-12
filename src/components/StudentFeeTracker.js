@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   collection,
   getDocs,
@@ -10,7 +10,8 @@ import {
 import { db } from "../Backend/firebase";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AccessCard from "./AccessCard";
+import { useAuth } from "../context/AuthContext";
+import { FaLock } from "react-icons/fa";
 import { courseFees } from "./CourseFeesData";
 import jsPDF from "jspdf";
 import autoTable, { applyPlugin } from "jspdf-autotable";
@@ -23,8 +24,7 @@ applyPlugin(jsPDF);
 //   PENDING: "Pending",
 // };
 
-const allowedAdminEmail = "aieseci.anpara@gmail.com";
-const allowedAdminPassword = "Aieseci@220471";
+// Admin email and password checked in context
 
 // Utility functions
 const calculateTotals = (paymentStatus, totalFee) => {
@@ -1248,22 +1248,29 @@ const FeeTable = ({
 
 // Main Component
 const StudentFeeTracker = () => {
-  /* ================= STUDENT ================= */
-  const [studentName, setStudentName] = useState("");
-  const [studentRollNumber, setStudentRollNumber] = useState("");
-
-  /* ================= ADMIN ================= */
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const { user, isAuthenticated, isAdmin: authIsAdmin } = useAuth();
 
   /* ================= AUTH ================= */
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
   /* ================= DATA ================= */
   const [currentStudent, setCurrentStudent] = useState(null);
   const [adminSearchRoll, setAdminSearchRoll] = useState("");
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAuthenticated(true);
+      setIsAdmin(authIsAdmin);
+      if (!authIsAdmin && user && user.enrollment) {
+        setCurrentStudent(user.enrollment);
+      }
+    } else {
+      setAuthenticated(false);
+      setIsAdmin(false);
+      setCurrentStudent(null);
+    }
+  }, [isAuthenticated, authIsAdmin, user]);
   const [loading, setLoading] = useState(false);
   const [testDate, setTestDate] = useState(""); // eslint-disable-line
   const [searchType, setSearchType] = useState("rollNo"); // "rollNo" or "name"
@@ -1278,77 +1285,7 @@ const StudentFeeTracker = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showOneTimeModal, setShowOneTimeModal] = useState(false);
 
-  /* ================= ACCESS HANDLER ================= */
-  const handleAccess = async (role) => {
-    setErrorMessage("");
-
-    // -------- ADMIN --------
-    if (role === "admin") {
-      if (
-        adminEmail.trim().toLowerCase() === allowedAdminEmail.toLowerCase() &&
-        adminPassword === allowedAdminPassword
-      ) {
-        setIsAdmin(true);
-        setAuthenticated(true);
-        toast.success("Admin access granted");
-      } else {
-        setErrorMessage("Invalid admin credentials");
-        toast.error("Invalid admin credentials");
-      }
-      return;
-    }
-
-    // -------- STUDENT --------
-    try {
-      const formattedRoll = `AFT-${studentRollNumber}`
-        .replace(/\s+/g, "")
-        .toUpperCase();
-
-      let q = query(
-        collection(db, "enrollments"),
-        where("rollNo", "==", formattedRoll),
-      );
-
-      let snapshot = await getDocs(q);
-
-      // fallback for old data
-      if (snapshot.empty) {
-        q = query(
-          collection(db, "enrollments"),
-          where("rollNo", "==", studentRollNumber.trim()),
-        );
-        snapshot = await getDocs(q);
-      }
-
-      if (snapshot.empty) {
-        setErrorMessage("Student not found");
-        toast.error("Student not found");
-        return;
-      }
-
-      const data = snapshot.docs[0].data();
-      data.id = snapshot.docs[0].id;
-
-      if (
-        data.name?.trim().toLowerCase() !== studentName.trim().toLowerCase()
-      ) {
-        setErrorMessage("Roll number and name do not match");
-        toast.error("Roll number and name do not match");
-        return;
-      }
-
-      if (!data.feeBreakdown) {
-        toast.info("No fee records found for this student. Contact admin.");
-      }
-
-      setCurrentStudent(data);
-      setIsAdmin(false);
-      setAuthenticated(true);
-      toast.success("Student access granted");
-    } catch {
-      toast.error("Something went wrong");
-    }
-  };
+  // handleAccess is now processed globally in the navbar
 
   /* ================= DOWNLOAD DUE LIST ================= */
   const handleDownloadDueList = async (type = "cumulative", format = "csv") => {
@@ -2249,38 +2186,22 @@ const StudentFeeTracker = () => {
     }
   };
 
-  /* ================= LOGOUT ================= */
-  const handleLogout = () => {
-    setAuthenticated(false);
-    setIsAdmin(false);
-    setCurrentStudent(null);
-    setStudentName("");
-    setStudentRollNumber("");
-    setAdminEmail("");
-    setAdminPassword("");
-    setAdminSearchRoll("");
-    toast.info("Logged out successfully");
-  };
+  // Logout handled globally in NavBar
 
   /* ================= AUTH SCREEN ================= */
   if (!authenticated) {
     return (
-      <>
-        <ToastContainer />
-        <AccessCard
-          studentName={studentName}
-          setStudentName={setStudentName}
-          studentRollNumber={studentRollNumber}
-          setStudentRollNumber={setStudentRollNumber}
-          adminEmail={adminEmail}
-          setAdminEmail={setAdminEmail}
-          adminPassword={adminPassword}
-          setAdminPassword={setAdminPassword}
-          handleAccess={handleAccess}
-          errorMessage={errorMessage}
-          variant="fee"
-        />
-      </>
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-6 text-white font-sans">
+        <div className="max-w-md w-full bg-gray-800/50 backdrop-blur-md border border-gray-700/50 rounded-3xl p-8 text-center shadow-xl">
+          <div className="w-16 h-16 bg-gray-900 border border-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <FaLock className="text-3xl text-yellow-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-4">Ledger Portal Locked</h2>
+          <p className="text-gray-400 mb-6 font-medium leading-relaxed">
+            Please log in using the button in the navigation bar to access the Fee Ledger records or view your receipts.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -2428,12 +2349,6 @@ const StudentFeeTracker = () => {
                 </button>
               </>
             )}
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-500 text-white border border-red-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)] hover:shadow-[0_0_25px_rgba(220,38,38,0.7)]"
-            >
-              Log Out
-            </button>
           </div>
         </div>
 
