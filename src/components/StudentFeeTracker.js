@@ -886,12 +886,256 @@ const SearchResultsModal = ({ isOpen, onClose, results, onSelect }) => {
 };
 
 
+const AddInstallmentModal = ({ isOpen, onClose, onConfirm, defaultOrder }) => {
+  const [componentType, setComponentType] = React.useState("Monthly Fee");
+  const [amount, setAmount] = React.useState(1000);
+  const [frequency, setFrequency] = React.useState("Monthly");
+  const [order, setOrder] = React.useState(defaultOrder || 1);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setOrder(defaultOrder || 1);
+      setComponentType("Monthly Fee");
+      setAmount(1000);
+      setFrequency("Monthly");
+    }
+  }, [isOpen, defaultOrder]);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (!componentType.trim()) {
+      toast.error("Component type is required.");
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a positive number.");
+      return;
+    }
+    if (isNaN(order) || order < 1) {
+      toast.error("Order must be at least 1.");
+      return;
+    }
+    onConfirm({
+      component_type: componentType.trim(),
+      amount: Number(amount),
+      frequency,
+      order: Number(order),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#1e293b] border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl transition-all">
+        <h2 className="text-2xl font-black text-white mb-2 font-sans">Add Custom Month</h2>
+        <p className="text-slate-400 text-sm mb-6 font-sans">
+          Add a custom fee installment to this student's course ledger.
+        </p>
+
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+              Component Type / Name
+            </label>
+            <input
+              type="text"
+              value={componentType}
+              onChange={(e) => setComponentType(e.target.value)}
+              placeholder="e.g. Monthly Fee, Exam Fee"
+              className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                Amount (₹)
+              </label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                Order
+              </label>
+              <input
+                type="number"
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+                className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+              Frequency
+            </label>
+            <select
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+              className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+            >
+              <option value="Monthly" className="bg-slate-800 text-white font-sans">Monthly</option>
+              <option value="Quarterly" className="bg-slate-800 text-white font-sans">Quarterly</option>
+              <option value="One-Time" className="bg-slate-800 text-white font-sans">One-Time</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition font-sans"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 transition font-sans"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const EditInstallmentModal = ({ isOpen, onClose, onConfirm, installment }) => {
+  const [componentType, setComponentType] = React.useState("");
+  const [amount, setAmount] = React.useState(0);
+  const [order, setOrder] = React.useState(1);
+  const [frequency, setFrequency] = React.useState("Monthly");
+
+  React.useEffect(() => {
+    if (isOpen && installment) {
+      setComponentType(installment.component_type || "");
+      setAmount(installment.amount || 0);
+      setOrder(installment.order || 1);
+      setFrequency(installment.frequency || "Monthly");
+    }
+  }, [isOpen, installment]);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (!componentType.trim()) {
+      toast.error("Component type is required.");
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a positive number.");
+      return;
+    }
+    if (isNaN(order) || order < 1) {
+      toast.error("Order must be at least 1.");
+      return;
+    }
+    onConfirm({
+      ...installment,
+      component_type: componentType.trim(),
+      amount: Number(amount),
+      frequency,
+      order: Number(order),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#1e293b] border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl transition-all">
+        <h2 className="text-2xl font-black text-white mb-2 font-sans">Edit Installment</h2>
+        <p className="text-slate-400 text-sm mb-6 font-sans">
+          Edit this installment's details and regular fee amount.
+        </p>
+
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+              Component Type / Name
+            </label>
+            <input
+              type="text"
+              value={componentType}
+              onChange={(e) => setComponentType(e.target.value)}
+              className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                Amount (₹)
+              </label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                Order
+              </label>
+              <input
+                type="number"
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+                className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2 font-sans">
+              Frequency
+            </label>
+            <select
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+              className="w-full bg-slate-900/70 border border-slate-600 rounded-2xl py-3 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500/40 font-sans"
+            >
+              <option value="Monthly" className="bg-slate-800 text-white font-sans">Monthly</option>
+              <option value="Quarterly" className="bg-slate-800 text-white font-sans">Quarterly</option>
+              <option value="One-Time" className="bg-slate-800 text-white font-sans">One-Time</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition font-sans"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 transition font-sans"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const FeeTableRow = ({
   fee,
   onTogglePayment,
   onToggleLateFinePayment,
   onEditLateFine,
   onCancelFineOverride,
+  onEditInstallment,
+  onDeleteInstallment,
   isAdmin,
   enrollmentDateStr,
   testDate,
@@ -1126,6 +1370,22 @@ const FeeTableRow = ({
               </button>
             )}
 
+            <button
+              onClick={() => onEditInstallment(fee)}
+              className="px-4 py-2 w-36 rounded-lg text-xs font-bold bg-blue-50/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 hover:text-white transition-all duration-200"
+            >
+              Edit Installment
+            </button>
+
+            {fee.order > 1 && (
+              <button
+                onClick={() => onDeleteInstallment(fee.order)}
+                className="px-4 py-2 w-36 rounded-lg text-xs font-bold bg-red-50/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:text-white transition-all duration-200"
+              >
+                Delete Installment
+              </button>
+            )}
+
             {!isEnrollmentFee && (fineApplicable || fee.isLateFinePaid) && (
               <div className="flex items-center space-x-2 w-36">
                 <button
@@ -1194,6 +1454,8 @@ const FeeTable = ({
   onToggleLateFinePayment,
   onEditLateFine,
   onCancelFineOverride,
+  onEditInstallment,
+  onDeleteInstallment,
   isAdmin,
   enrollmentDateStr,
   testDate,
@@ -1234,6 +1496,8 @@ const FeeTable = ({
               onToggleLateFinePayment={onToggleLateFinePayment}
               onEditLateFine={onEditLateFine}
               onCancelFineOverride={onCancelFineOverride}
+              onEditInstallment={onEditInstallment}
+              onDeleteInstallment={onDeleteInstallment}
               isAdmin={isAdmin}
               enrollmentDateStr={enrollmentDateStr}
               testDate={testDate}
@@ -1284,6 +1548,9 @@ const StudentFeeTracker = () => {
   const [editingFineData, setEditingFineData] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showOneTimeModal, setShowOneTimeModal] = useState(false);
+  const [showAddInstallmentModal, setShowAddInstallmentModal] = useState(false);
+  const [showEditInstallmentModal, setShowEditInstallmentModal] = useState(false);
+  const [selectedInstallment, setSelectedInstallment] = useState(null);
 
   // handleAccess is now processed globally in the navbar
 
@@ -2186,6 +2453,196 @@ const StudentFeeTracker = () => {
     }
   };
 
+  /* ================= CUSTOM INSTALLMENTS HANDLERS ================= */
+  const handleAddInstallment = async (fields) => {
+    if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+
+    const newOrder = Number(fields.order);
+    
+    // Shift subsequent installment orders if they are >= newOrder
+    let updatedBreakdown = currentStudent.feeBreakdown.map((fee) => {
+      if (fee.order >= newOrder) {
+        return { ...fee, order: fee.order + 1 };
+      }
+      return fee;
+    });
+
+    updatedBreakdown.push({
+      component_type: fields.component_type,
+      amount: fields.amount,
+      frequency: fields.frequency,
+      order: newOrder,
+      isPaid: false,
+      invoiceNo: "",
+      paymentDate: "",
+      installments: [],
+    });
+
+    updatedBreakdown.sort((a, b) => a.order - b.order);
+
+    // Recalculate totalFee
+    const totalFeeAmount = updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
+
+    // Optimistic Update
+    setCurrentStudent((prev) => ({
+      ...prev,
+      feeBreakdown: updatedBreakdown,
+      totalFee: totalFeeAmount,
+    }));
+
+    try {
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: updatedBreakdown,
+        totalFee: totalFeeAmount,
+      });
+      toast.success("Custom month/installment added successfully!");
+      setShowAddInstallmentModal(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add custom installment.");
+      // Revert
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: currentStudent.feeBreakdown,
+        totalFee: currentStudent.totalFee,
+      }));
+    }
+  };
+
+  const handleEditInstallmentConfirm = async (fields) => {
+    if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+
+    const oldOrder = selectedInstallment.order;
+    const newOrder = Number(fields.order);
+
+    let updatedBreakdown = [...currentStudent.feeBreakdown];
+
+    // If order has changed, shift other items' orders
+    if (oldOrder !== newOrder) {
+      // Temporarily remove the editing item
+      const remaining = updatedBreakdown.filter((f) => f.order !== oldOrder);
+      
+      // Shift orders of remaining items
+      const shifted = remaining.map((fee) => {
+        if (oldOrder < newOrder) {
+          // Shifting forward: items between oldOrder and newOrder move down
+          if (fee.order > oldOrder && fee.order <= newOrder) {
+            return { ...fee, order: fee.order - 1 };
+          }
+        } else {
+          // Shifting backward: items between newOrder and oldOrder move up
+          if (fee.order >= newOrder && fee.order < oldOrder) {
+            return { ...fee, order: fee.order + 1 };
+          }
+        }
+        return fee;
+      });
+
+      shifted.push({
+        ...selectedInstallment,
+        component_type: fields.component_type,
+        amount: fields.amount,
+        frequency: fields.frequency,
+        order: newOrder,
+      });
+
+      updatedBreakdown = shifted;
+    } else {
+      // Just update details in place
+      updatedBreakdown = updatedBreakdown.map((fee) => {
+        if (fee.order === oldOrder) {
+          return {
+            ...fee,
+            component_type: fields.component_type,
+            amount: fields.amount,
+            frequency: fields.frequency,
+          };
+        }
+        return fee;
+      });
+    }
+
+    updatedBreakdown.sort((a, b) => a.order - b.order);
+
+    // Recalculate totalFee
+    const totalFeeAmount = updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
+
+    // Optimistic Update
+    setCurrentStudent((prev) => ({
+      ...prev,
+      feeBreakdown: updatedBreakdown,
+      totalFee: totalFeeAmount,
+    }));
+
+    try {
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: updatedBreakdown,
+        totalFee: totalFeeAmount,
+      });
+      toast.success("Installment updated successfully!");
+      setShowEditInstallmentModal(false);
+      setSelectedInstallment(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update installment.");
+      // Revert
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: currentStudent.feeBreakdown,
+        totalFee: currentStudent.totalFee,
+      }));
+    }
+  };
+
+  const handleDeleteInstallment = async (orderId) => {
+    if (!isAdmin || !currentStudent || !currentStudent.feeBreakdown) return;
+
+    if (orderId === 1) {
+      toast.error("Enrollment Fee installment cannot be deleted.");
+      return;
+    }
+
+    const confirmed = window.confirm("Are you sure you want to delete this installment? This will also remove any record of payment for this installment.");
+    if (!confirmed) return;
+
+    // Filter out target, shift subsequent orders down by 1
+    const updatedBreakdown = currentStudent.feeBreakdown
+      .filter((f) => f.order !== orderId)
+      .map((fee) => {
+        if (fee.order > orderId) {
+          return { ...fee, order: fee.order - 1 };
+        }
+        return fee;
+      });
+
+    // Recalculate totalFee
+    const totalFeeAmount = updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
+
+    // Optimistic Update
+    setCurrentStudent((prev) => ({
+      ...prev,
+      feeBreakdown: updatedBreakdown,
+      totalFee: totalFeeAmount,
+    }));
+
+    try {
+      await updateDoc(doc(db, "enrollments", currentStudent.id), {
+        feeBreakdown: updatedBreakdown,
+        totalFee: totalFeeAmount,
+      });
+      toast.success("Installment deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete installment.");
+      // Revert
+      setCurrentStudent((prev) => ({
+        ...prev,
+        feeBreakdown: currentStudent.feeBreakdown,
+        totalFee: currentStudent.totalFee,
+      }));
+    }
+  };
+
   // Logout handled globally in NavBar
 
   /* ================= AUTH SCREEN ================= */
@@ -2273,6 +2730,23 @@ const StudentFeeTracker = () => {
         studentName={currentStudent?.name}
         loading={loading}
         isCcc={currentStudent?.course?.toLowerCase() === "ccc"}
+      />
+
+      <AddInstallmentModal
+        isOpen={showAddInstallmentModal}
+        onClose={() => setShowAddInstallmentModal(false)}
+        onConfirm={handleAddInstallment}
+        defaultOrder={currentStudent?.feeBreakdown ? currentStudent.feeBreakdown.length + 1 : 1}
+      />
+
+      <EditInstallmentModal
+        isOpen={showEditInstallmentModal}
+        onClose={() => {
+          setShowEditInstallmentModal(false);
+          setSelectedInstallment(null);
+        }}
+        onConfirm={handleEditInstallmentConfirm}
+        installment={selectedInstallment}
       />
 
       <div className="max-w-7xl mx-auto space-y-8">
@@ -2557,25 +3031,46 @@ const StudentFeeTracker = () => {
                       Payment Ledger
                     </h3>
                     {isAdmin && (
-                      <button
-                        onClick={handleDeleteLedger}
-                        className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowAddInstallmentModal(true)}
+                          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-blue-500/20"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2.5"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Delete Fee Ledger
-                      </button>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                          Add Custom Month
+                        </button>
+                        <button
+                          onClick={handleDeleteLedger}
+                          className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          Delete Fee Ledger
+                        </button>
+                      </div>
                     )}
                   </div>
                   <div className="rounded-2xl overflow-hidden border border-gray-700">
@@ -2585,6 +3080,11 @@ const StudentFeeTracker = () => {
                       onToggleLateFinePayment={handleLateFineToggle}
                       onEditLateFine={handleEditLateFine}
                       onCancelFineOverride={handleCancelFineOverride}
+                      onEditInstallment={(installment) => {
+                        setSelectedInstallment(installment);
+                        setShowEditInstallmentModal(true);
+                      }}
+                      onDeleteInstallment={handleDeleteInstallment}
                       isAdmin={isAdmin}
                       enrollmentDateStr={currentStudent.dateOfEnrollment}
                       testDate={testDate}
