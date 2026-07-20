@@ -67,6 +67,82 @@ const translateToHindi = async (text) => {
   return "";
 };
 
+const parseCustomDate = (dateStr) => {
+  if (!dateStr) return null;
+  const parts = dateStr.includes("/") ? dateStr.split("/") : dateStr.split("-");
+  if (parts.length !== 3) return new Date(dateStr);
+
+  let dateObj;
+  if (dateStr.includes("/")) {
+    let year = parseInt(parts[2]);
+    if (year < 100) year += 2000;
+    dateObj = new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
+  } else {
+    if (parts[0].length === 4) {
+      dateObj = new Date(
+        parseInt(parts[0]),
+        parseInt(parts[1]) - 1,
+        parseInt(parts[2]),
+      );
+    } else {
+      dateObj = new Date(dateStr);
+    }
+  }
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+};
+
+const calculateCurrentlyDueRegular = (feeBreakdown, enrollmentDateStr) => {
+  if (!feeBreakdown || !enrollmentDateStr) return 0;
+
+  let currentlyPendingRegular = 0;
+  const today = new Date();
+
+  feeBreakdown.forEach((fee) => {
+    if (fee.isPaid) return;
+
+    const isEnrollmentFee =
+      fee.component_type === "Enrollment Fee" || fee.order === 1;
+
+    let isDue = false;
+
+    if (isEnrollmentFee) {
+      isDue = true;
+    } else {
+      const dateObj = parseCustomDate(enrollmentDateStr);
+      if (dateObj && !isNaN(dateObj.getTime())) {
+        let monthsToAdd = fee.order - 1;
+        if (fee.frequency === "Quarterly") {
+          monthsToAdd = (fee.order - 1) * 3;
+        }
+
+        if (dateObj.getDate() > 25 && fee.order > 1) {
+          monthsToAdd += 1;
+        }
+
+        const targetMonth = dateObj.getMonth() + monthsToAdd;
+        dateObj.setMonth(targetMonth);
+        if (dateObj.getMonth() !== targetMonth % 12) {
+          dateObj.setDate(0);
+        }
+
+        if (
+          dateObj.getFullYear() < today.getFullYear() ||
+          (dateObj.getFullYear() === today.getFullYear() &&
+            dateObj.getMonth() <= today.getMonth())
+        ) {
+          isDue = true;
+        }
+      }
+    }
+
+    if (isDue) {
+      currentlyPendingRegular += fee.amount - (fee.partialPaid || 0);
+    }
+  });
+
+  return currentlyPendingRegular;
+};
+
 const ExamDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -87,6 +163,7 @@ const ExamDashboard = () => {
   const [assignRollNumber, setAssignRollNumber] = useState("");
   const [examDuration, setExamDuration] = useState("90");
   const [randomizeQuestions, setRandomizeQuestions] = useState(false);
+  const [allowPendingFees, setAllowPendingFees] = useState(false);
   const [pinRestrictionEnabled, setPinRestrictionEnabled] = useState(false);
   const [accessPin, setAccessPin] = useState("");
   const [deleteModal, setDeleteModal] = useState({
@@ -741,23 +818,19 @@ const ExamDashboard = () => {
         return;
       }
 
-      const paid = studentData.feeBreakdown
-        .filter((fee) => fee.isPaid)
-        .reduce((acc, curr) => acc + curr.amount, 0);
-
-      const partialPaid = studentData.feeBreakdown
-        .filter((fee) => !fee.isPaid && fee.partialPaid > 0)
-        .reduce((acc, curr) => acc + curr.partialPaid, 0);
-
-      const totalPaidAmount = paid + partialPaid;
-      const pending = studentData.totalFee - totalPaidAmount;
-
-      if (pending > 0) {
-        toast.error(
-          `Cannot assign exam: Student has pending fees of ₹${pending}.`,
+      if (!allowPendingFees) {
+        const overdueDues = calculateCurrentlyDueRegular(
+          studentData.feeBreakdown,
+          studentData.dateOfEnrollment,
         );
-        setLoading(false);
-        return;
+
+        if (overdueDues > 0) {
+          toast.error(
+            `Cannot assign exam: Student has overdue fees of ₹${overdueDues} up to this month. (Check 'Bypass Fee Check' to override)`,
+          );
+          setLoading(false);
+          return;
+        }
       }
 
       // Check Duplicate Assignment
@@ -1215,22 +1288,41 @@ const ExamDashboard = () => {
                         </button>
                       </div>
 
-                      {/* Randomizer Toggle */}
-                      <label className="flex items-center gap-3 cursor-pointer group w-fit select-none">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={randomizeQuestions}
-                            onChange={(e) => setRandomizeQuestions(e.target.checked)}
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${randomizeQuestions ? "bg-blue-500" : "bg-gray-700"}`}></div>
-                          <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${randomizeQuestions ? "translate-x-4" : ""}`}></div>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">
-                          Randomize question order for this student
-                        </span>
-                      </label>
+                      <div className="flex flex-wrap items-center gap-6">
+                        {/* Randomizer Toggle */}
+                        <label className="flex items-center gap-3 cursor-pointer group w-fit select-none">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={randomizeQuestions}
+                              onChange={(e) => setRandomizeQuestions(e.target.checked)}
+                            />
+                            <div className={`w-10 h-6 rounded-full transition-colors ${randomizeQuestions ? "bg-blue-500" : "bg-gray-700"}`}></div>
+                            <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${randomizeQuestions ? "translate-x-4" : ""}`}></div>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">
+                            Randomize question order for this student
+                          </span>
+                        </label>
+
+                        {/* Bypass Fee Check Toggle */}
+                        <label className="flex items-center gap-3 cursor-pointer group w-fit select-none">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={allowPendingFees}
+                              onChange={(e) => setAllowPendingFees(e.target.checked)}
+                            />
+                            <div className={`w-10 h-6 rounded-full transition-colors ${allowPendingFees ? "bg-yellow-500" : "bg-gray-700"}`}></div>
+                            <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${allowPendingFees ? "translate-x-4" : ""}`}></div>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">
+                            Bypass Fee Check (Allow exam assignment with pending dues)
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}
