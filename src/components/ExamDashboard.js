@@ -23,6 +23,7 @@ import {
   deleteSemester,
   renameQuestionSet,
   addQuestion,
+  updateQuestion,
 } from "../Backend/examService";
 import { courseFees } from "./CourseFeesData";
 import { FaLock } from "react-icons/fa";
@@ -191,6 +192,21 @@ const ExamDashboard = () => {
   const [manualOptD, setManualOptD] = useState("");
   const [manualOptDHindi, setManualOptDHindi] = useState("");
   const [manualCorrect, setManualCorrect] = useState("A");
+
+  // Edit Question Modal States
+  const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editQText, setEditQText] = useState("");
+  const [editQTextHindi, setEditQTextHindi] = useState("");
+  const [editQOptA, setEditQOptA] = useState("");
+  const [editQOptAHindi, setEditQOptAHindi] = useState("");
+  const [editQOptB, setEditQOptB] = useState("");
+  const [editQOptBHindi, setEditQOptBHindi] = useState("");
+  const [editQOptC, setEditQOptC] = useState("");
+  const [editQOptCHindi, setEditQOptCHindi] = useState("");
+  const [editQOptD, setEditQOptD] = useState("");
+  const [editQOptDHindi, setEditQOptDHindi] = useState("");
+  const [editQCorrect, setEditQCorrect] = useState("A");
 
   const resetManualQuestionForm = () => {
     setManualText("");
@@ -614,6 +630,99 @@ const ExamDashboard = () => {
       toast.success("Question set created");
     } catch (error) {
       toast.error("Failed to create set");
+    }
+  };
+
+  const handleOpenEditQuestionModal = (q) => {
+    setEditingQuestion(q);
+    setEditQText(q.text || "");
+    setEditQTextHindi(q.textHindi || "");
+    setEditQOptA(q.options?.A || "");
+    setEditQOptAHindi(q.optionsHindi?.A || "");
+    setEditQOptB(q.options?.B || "");
+    setEditQOptBHindi(q.optionsHindi?.B || "");
+    setEditQOptC(q.options?.C || "");
+    setEditQOptCHindi(q.optionsHindi?.C || "");
+    setEditQOptD(q.options?.D || "");
+    setEditQOptDHindi(q.optionsHindi?.D || "");
+    setEditQCorrect(q.correctAnswer || "A");
+    setShowEditQuestionModal(true);
+  };
+
+  const handleSaveEditedQuestion = async (e) => {
+    if (e) e.preventDefault();
+    if (!editingQuestion) return;
+
+    if (!editQText.trim()) {
+      toast.error("Question text is required.");
+      return;
+    }
+    if (!editQOptA.trim() || !editQOptB.trim() || !editQOptC.trim() || !editQOptD.trim()) {
+      toast.error("All four options (A, B, C, D) are required.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      toast.info("Saving question updates...");
+
+      const qHindi = editQTextHindi.trim()
+        ? editQTextHindi.trim()
+        : await translateToHindi(editQText.trim());
+
+      const optAHindi = editQOptAHindi.trim()
+        ? editQOptAHindi.trim()
+        : await translateToHindi(editQOptA.trim());
+
+      const optBHindi = editQOptBHindi.trim()
+        ? editQOptBHindi.trim()
+        : await translateToHindi(editQOptB.trim());
+
+      const optCHindi = editQOptCHindi.trim()
+        ? editQOptCHindi.trim()
+        : await translateToHindi(editQOptC.trim());
+
+      const optDHindi = editQOptDHindi.trim()
+        ? editQOptDHindi.trim()
+        : await translateToHindi(editQOptD.trim());
+
+      const updatedData = {
+        text: editQText.trim(),
+        textHindi: qHindi,
+        options: {
+          A: editQOptA.trim(),
+          B: editQOptB.trim(),
+          C: editQOptC.trim(),
+          D: editQOptD.trim(),
+        },
+        optionsHindi: {
+          A: optAHindi,
+          B: optBHindi,
+          C: optCHindi,
+          D: optDHindi,
+        },
+        correctAnswer: editQCorrect,
+      };
+
+      await updateQuestion(editingQuestion.id, updatedData);
+      toast.success("Question updated successfully!");
+      setShowEditQuestionModal(false);
+      setEditingQuestion(null);
+
+      // Reload questions
+      if (selectedCourse && selectedSemester && selectedSet) {
+        const qs = await getQuestions(
+          selectedCourse.id,
+          selectedSemester.id,
+          selectedSet.id
+        );
+        setQuestions(qs);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update question.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1390,7 +1499,7 @@ const ExamDashboard = () => {
                               <span className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded-md uppercase tracking-wider">
                                 Question {idx + 1}
                               </span>
-                              <div className="flex gap-3">
+                              <div className="flex gap-3 items-center">
                                 <FiCheckCircle
                                   className={
                                     q.correctAnswer
@@ -1399,14 +1508,26 @@ const ExamDashboard = () => {
                                   }
                                 />
                                 {isAdmin && (
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteSingleQuestion(q.id)
-                                    }
-                                    className="text-gray-500 hover:text-red-400 transition-colors"
-                                  >
-                                    <FiTrash2 size={18} />
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleOpenEditQuestionModal(q)
+                                      }
+                                      className="text-gray-500 hover:text-blue-400 transition-colors"
+                                      title="Edit Question"
+                                    >
+                                      <FiEdit2 size={18} />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteSingleQuestion(q.id)
+                                      }
+                                      className="text-gray-500 hover:text-red-400 transition-colors"
+                                      title="Delete Question"
+                                    >
+                                      <FiTrash2 size={18} />
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -1813,6 +1934,210 @@ const ExamDashboard = () => {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Question Modal */}
+      {showEditQuestionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-gray-800 border border-gray-700 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scroll">
+            <div className="flex justify-between items-center border-b border-gray-700 pb-4 mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+                <FiEdit2 className="text-blue-400" /> Edit Question
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditQuestionModal(false);
+                  setEditingQuestion(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedQuestion} className="space-y-6">
+              {/* Question Text */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Question Text (English) <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={editQText}
+                    onChange={(e) => setEditQText(e.target.value)}
+                    placeholder="Type the question in English..."
+                    className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Question Text (Hindi) <span className="text-gray-500">(Optional - Auto-translated if blank)</span>
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={editQTextHindi}
+                    onChange={(e) => setEditQTextHindi(e.target.value)}
+                    placeholder="Type in Hindi or leave blank to auto-translate..."
+                    className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="space-y-4">
+                <h4 className="text-md font-bold text-gray-300 border-b border-gray-750 pb-2">Options</h4>
+
+                {/* Option A */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option A (English) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptA}
+                      onChange={(e) => setEditQOptA(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option A (Hindi)
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptAHindi}
+                      onChange={(e) => setEditQOptAHindi(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Option B */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option B (English) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptB}
+                      onChange={(e) => setEditQOptB(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option B (Hindi)
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptBHindi}
+                      onChange={(e) => setEditQOptBHindi(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Option C */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option C (English) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptC}
+                      onChange={(e) => setEditQOptC(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option C (Hindi)
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptCHindi}
+                      onChange={(e) => setEditQOptCHindi(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Option D */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option D (English) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptD}
+                      onChange={(e) => setEditQOptD(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Option D (Hindi)
+                    </label>
+                    <input
+                      type="text"
+                      value={editQOptDHindi}
+                      onChange={(e) => setEditQOptDHindi(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Correct Answer Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Correct Answer <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={editQCorrect}
+                  onChange={(e) => setEditQCorrect(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold"
+                >
+                  <option value="A">Option A</option>
+                  <option value="B">Option B</option>
+                  <option value="C">Option C</option>
+                  <option value="D">Option D</option>
+                </select>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-4 pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditQuestionModal(false);
+                    setEditingQuestion(null);
+                  }}
+                  className="flex-1 py-3 px-6 rounded-2xl bg-gray-700 hover:bg-gray-600 text-white font-bold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 py-3 px-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                >
+                  {loading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

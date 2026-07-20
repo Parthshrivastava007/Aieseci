@@ -103,6 +103,14 @@ export const getQuestions = async (courseId, semesterId = null, setId = null) =>
   return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 };
 
+export const updateQuestion = async (questionId, updatedData) => {
+  const ref = doc(db, COLLECTIONS.QUESTIONS, questionId);
+  await updateDoc(ref, {
+    ...updatedData,
+    updatedAt: serverTimestamp()
+  });
+};
+
 export const deleteQuestion = async (questionId) => {
   await deleteDoc(doc(db, COLLECTIONS.QUESTIONS, questionId));
 };
