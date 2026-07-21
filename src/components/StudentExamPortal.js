@@ -645,6 +645,60 @@ const StudentExamPortal = ({ name, rollNumber }) => {
             </div>
           </div>
         )}
+
+        {/* Submit Confirmation Modal */}
+        {showSubmitConfirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-gray-800 border border-gray-700 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 text-center space-y-6">
+              <div className="flex justify-center">
+                <div className="bg-blue-500/20 p-4 rounded-full text-blue-400 animate-pulse">
+                  <FiAward size={32} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-black text-white">Submit Exam?</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Are you sure you want to submit? You cannot change your answers after submitting.
+              </p>
+              {activeExam && (
+                <div className="bg-gray-900/60 border border-gray-700/40 rounded-2xl p-4 grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
+                      Questions Attempted
+                    </span>
+                    <span className="text-white font-black text-lg">
+                      {Object.keys(answers).length} / {questions.length}
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
+                      Remaining Time
+                    </span>
+                    <span className="text-yellow-400 font-black font-mono text-lg">
+                      {formatTime(timeLeft)}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSubmitConfirmModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-650 border border-gray-600 rounded-xl font-bold transition-all text-sm text-gray-300"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowSubmitConfirmModal(false);
+                    await performSubmit();
+                  }}
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-white transition-all shadow-lg shadow-blue-500/30 text-sm uppercase tracking-wider"
+                >
+                  Submit Exam
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -811,59 +865,7 @@ const StudentExamPortal = ({ name, rollNumber }) => {
         </div>
       )}
 
-      {/* Submit Confirmation Modal */}
-      {showSubmitConfirmModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-gray-800 border border-gray-700 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 text-center space-y-6">
-            <div className="flex justify-center">
-              <div className="bg-blue-500/20 p-4 rounded-full text-blue-400 animate-pulse">
-                <FiAward size={32} />
-              </div>
-            </div>
-            <h3 className="text-2xl font-black text-white">Submit Exam?</h3>
-            <p className="text-gray-300 text-sm leading-relaxed">
-              Are you sure you want to submit? You cannot change your answers after submitting.
-            </p>
-            {activeExam && (
-              <div className="bg-gray-900/60 border border-gray-700/40 rounded-2xl p-4 grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
-                    Questions Attempted
-                  </span>
-                  <span className="text-white font-black text-lg">
-                    {Object.keys(answers).length} / {questions.length}
-                  </span>
-                </div>
-                <div className="text-center">
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
-                    Remaining Time
-                  </span>
-                  <span className="text-yellow-400 font-black font-mono text-lg">
-                    {formatTime(timeLeft)}
-                  </span>
-                </div>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowSubmitConfirmModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-650 border border-gray-600 rounded-xl font-bold transition-all text-sm text-gray-300"
-              >
-                Go Back
-              </button>
-              <button
-                onClick={async () => {
-                  setShowSubmitConfirmModal(false);
-                  await performSubmit();
-                }}
-                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-white transition-all shadow-lg shadow-blue-500/30 text-sm uppercase tracking-wider"
-              >
-                Submit Exam
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Student Marks Modal */}
       {showMarksModal && studentDoc && (
