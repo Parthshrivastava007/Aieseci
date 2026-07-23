@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import LogoAiseci from "../assets/Images/LogoAiseci.png";
@@ -81,8 +81,22 @@ const LoginModal = ({ isOpen, onClose }) => {
 const Navbar = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const { user, isAuthenticated } = useAuth(); 
+  const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  const [hideNavbar, setHideNavbar] = useState(false);
+
+  useEffect(() => {
+    const handleHide = () => setHideNavbar(true);
+    const handleShow = () => setHideNavbar(false);
+
+    window.addEventListener("hide-navbar", handleHide);
+    window.addEventListener("show-navbar", handleShow);
+
+    return () => {
+      window.removeEventListener("hide-navbar", handleHide);
+      window.removeEventListener("show-navbar", handleShow);
+    };
+  }, []);
 
   const menuItems = [
     { name: "Home", path: "/" },
@@ -92,6 +106,8 @@ const Navbar = () => {
     { name: "Exams", path: "/exams" },
     { name: "Contact", path: "/contact" },
   ];
+
+  if (hideNavbar) return null;
 
   return (
     <nav className="bg-gray-900 text-white shadow-xl sticky top-0 z-[100] border-b border-gray-800">
@@ -119,8 +135,8 @@ const Navbar = () => {
                 <Link
                   to={item.path}
                   className={`relative py-1 text-sm font-semibold tracking-wide transition-colors duration-300 group ${location.pathname === item.path
-                      ? "text-yellow-400"
-                      : "text-gray-300 hover:text-yellow-400"
+                    ? "text-yellow-400"
+                    : "text-gray-300 hover:text-yellow-400"
                     }`}
                 >
                   <motion.span whileHover={{ y: -2 }} className="inline-block">
@@ -130,8 +146,8 @@ const Navbar = () => {
                   {/* Animated Underline */}
                   <span
                     className={`absolute bottom-0 left-0 h-0.5 bg-yellow-400 transition-all duration-300 rounded-full ${location.pathname === item.path
-                        ? "w-full"
-                        : "w-0 group-hover:w-full"
+                      ? "w-full"
+                      : "w-0 group-hover:w-full"
                       }`}
                   />
                 </Link>
@@ -217,8 +233,8 @@ const Navbar = () => {
                         to={item.path}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`text-xl font-bold transition-all duration-300 flex items-center group ${location.pathname === item.path
-                            ? "text-yellow-400"
-                            : "text-gray-100 hover:text-yellow-400"
+                          ? "text-yellow-400"
+                          : "text-gray-100 hover:text-yellow-400"
                           }`}
                       >
                         <motion.span

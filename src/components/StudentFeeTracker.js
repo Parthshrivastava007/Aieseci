@@ -1537,7 +1537,7 @@ const StudentFeeTracker = () => {
   }, [isAuthenticated, authIsAdmin, user]);
   const [loading, setLoading] = useState(false);
   const [testDate, setTestDate] = useState(""); // eslint-disable-line
-  const [searchType, setSearchType] = useState("rollNo"); // "rollNo" or "name"
+  const [searchType, setSearchType] = useState("rollNo"); // "rollNo", "name" or "invoiceNo"
   const [searchResults, setSearchResults] = useState([]);
   const [showResultsModal, setShowResultsModal] = useState(false);
 
@@ -1599,6 +1599,13 @@ const StudentFeeTracker = () => {
       snapshot.forEach((docSnap) => {
         const student = { id: docSnap.id, ...docSnap.data() };
         if (!student.feeBreakdown || student.feeBreakdown.length === 0) return;
+
+        const enrollmentFee = student.feeBreakdown.find(
+          (f) => f.component_type === "Enrollment Fee" || f.order === 1
+        );
+        if (enrollmentFee && !enrollmentFee.isPaid) return;
+
+        if (student.course && student.course.toLowerCase() === "ccc") return;
 
         const totals = calculateTotals(student.feeBreakdown, student.totalFee);
         const currentlyDueRegular = calculateCurrentlyDueRegular(
@@ -1911,7 +1918,13 @@ const StudentFeeTracker = () => {
   const handleAdminSearch = async () => {
     const queryStr = adminSearchRoll.trim();
     if (!queryStr) {
-      toast.error(searchType === "rollNo" ? "Please enter a roll number" : "Please enter a student name");
+      toast.error(
+        searchType === "rollNo"
+          ? "Please enter a roll number"
+          : searchType === "name"
+          ? "Please enter a student name"
+          : "Please enter an invoice number"
+      );
       return;
     }
 
@@ -1949,6 +1962,38 @@ const StudentFeeTracker = () => {
           }
           setCurrentStudent(data);
           toast.success("Student found");
+        }
+      } else if (searchType === "invoiceNo") {
+        // Search by Invoice Number: fetch all enrollments and perform case-insensitive matching in fee breakdown
+        const snapshot = await getDocs(collection(db, "enrollments"));
+        const matches = [];
+
+        snapshot.forEach((docSnap) => {
+          const student = { id: docSnap.id, ...docSnap.data() };
+          if (student.feeBreakdown && Array.isArray(student.feeBreakdown)) {
+            const hasMatchingInvoice = student.feeBreakdown.some((fee) =>
+              fee.invoiceNo && fee.invoiceNo.toLowerCase().includes(queryStr.toLowerCase())
+            );
+            if (hasMatchingInvoice) {
+              matches.push(student);
+            }
+          }
+        });
+
+        if (matches.length === 0) {
+          toast.error(`No student found with invoice number: ${queryStr}`);
+          setCurrentStudent(null);
+        } else if (matches.length === 1) {
+          const matchedStudent = matches[0];
+          if (!matchedStudent.feeBreakdown) {
+            toast.info("No fee records generated for this student.");
+          }
+          setCurrentStudent(matchedStudent);
+          toast.success("Student found");
+        } else {
+          // Multiple matches
+          setSearchResults(matches);
+          setShowResultsModal(true);
         }
       } else {
         // Search by Name: fetch all enrollments and perform case-insensitive substring filtering
@@ -2833,7 +2878,7 @@ const StudentFeeTracker = () => {
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">
                   Find Student
                 </h3>
-                <div className="flex bg-gray-950/40 p-1 rounded-xl border border-gray-700/60">
+                <div className="flex bg-gray-950/40 p-1 rounded-xl border border-gray-700/60 flex-wrap gap-1">
                   <button
                     onClick={() => {
                       setSearchType("rollNo");
@@ -2860,6 +2905,19 @@ const StudentFeeTracker = () => {
                   >
                     Student Name
                   </button>
+                  <button
+                    onClick={() => {
+                      setSearchType("invoiceNo");
+                      setAdminSearchRoll("");
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      searchType === "invoiceNo"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Invoice Number
+                  </button>
                 </div>
               </div>
               <div className="flex space-x-3">
@@ -2881,10 +2939,19 @@ const StudentFeeTracker = () => {
                         className="w-full py-3.5 pr-3.5 bg-transparent text-white placeholder-gray-500 outline-none"
                       />
                     </>
-                  ) : (
+                  ) : searchType === "name" ? (
                     <input
                       type="text"
                       placeholder="Enter student name..."
+                      value={adminSearchRoll}
+                      onChange={(e) => setAdminSearchRoll(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAdminSearch()}
+                      className="w-full py-3.5 px-4 bg-transparent text-white placeholder-gray-500 outline-none"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Enter invoice number..."
                       value={adminSearchRoll}
                       onChange={(e) => setAdminSearchRoll(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAdminSearch()}

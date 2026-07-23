@@ -327,6 +327,33 @@ const StudentExamPortal = ({ name, rollNumber }) => {
   };
 
   useEffect(() => {
+    if (activeExam) {
+      window.dispatchEvent(new Event("hide-navbar"));
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.log("Error attempting to enable fullscreen:", err);
+        });
+      }
+    } else {
+      window.dispatchEvent(new Event("show-navbar"));
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch((err) => {
+          console.log("Error attempting to exit fullscreen:", err);
+        });
+      }
+    }
+
+    return () => {
+      window.dispatchEvent(new Event("show-navbar"));
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch((err) => {
+          console.log("Error attempting to exit fullscreen:", err);
+        });
+      }
+    };
+  }, [activeExam]);
+
+  useEffect(() => {
     if (!activeExam) {
       setViolations(0);
       setShowViolationModal(false);
@@ -397,6 +424,21 @@ const StudentExamPortal = ({ name, rollNumber }) => {
 
     return (
       <div className="max-w-7xl mx-auto pb-20 space-y-6 animate-in fade-in duration-300">
+        {/* Floating Timer Widget */}
+        <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[90] bg-gray-900/90 backdrop-blur-xl border border-yellow-500/30 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-5 hover:scale-105 transition-all select-none">
+          <div className="relative flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-yellow-500"></span>
+          </div>
+          <div>
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-wider block leading-none mb-1">
+              Time Remaining
+            </span>
+            <span className="text-yellow-400 font-black font-mono text-lg leading-none">
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+        </div>
         {/* Top Details Header Card */}
         <div className="bg-gray-880/40 backdrop-blur-md border border-gray-700/60 rounded-3xl p-6 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-4">
