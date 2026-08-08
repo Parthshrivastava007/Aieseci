@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../Backend/firebase";
 import { toast, ToastContainer } from "react-toastify";
+import { courseFees } from "../components/CourseFeesData";
 import "react-toastify/dist/ReactToastify.css";
 import * as XLSX from "xlsx";
 import EnrollmentFilters from "../components/EnrollmentFilters";
@@ -109,11 +110,75 @@ const EnrollmentTable = () => {
   /* ================= CRUD ================= */
   const handleUpdate = async () => {
     try {
-      await updateDoc(doc(db, "enrollments", editId), editData);
+      const docRef = doc(db, "enrollments", editId);
+      const docSnap = await getDoc(docRef);
+      let updatedData = { ...editData };
+
+      if (docSnap.exists()) {
+        const existingData = docSnap.data();
+
+        // If the course changed, adjust the fee ledger
+        if (existingData.course !== editData.course) {
+          const newCourseFee = courseFees.find(
+            (c) => c.course_name?.toLowerCase() === editData.course?.toLowerCase()
+          );
+
+          if (newCourseFee) {
+            // 1. Calculate how much student has paid in total so far
+            const oldBreakdown = existingData.feeBreakdown || [];
+            const totalPaidAmount = oldBreakdown.reduce((sum, fee) => {
+              if (fee.isPaid) {
+                return sum + (fee.amount || 0);
+              } else if (fee.partialPaid > 0) {
+                return sum + fee.partialPaid;
+              }
+              return sum;
+            }, 0);
+
+            // 2. Create a new empty breakdown for the target course
+            const newBreakdown = newCourseFee.fee_breakdown.map((fee) => ({
+              ...fee,
+              isPaid: false,
+              partialPaid: 0,
+              invoiceNo: "",
+              paymentDate: "",
+            }));
+
+            // 3. Redistribute their paid credit into the new breakdown
+            let remainingCredit = totalPaidAmount;
+            for (let i = 0; i < newBreakdown.length; i++) {
+              const fee = newBreakdown[i];
+              if (remainingCredit >= fee.amount) {
+                fee.isPaid = true;
+                fee.partialPaid = 0; // or fee.amount
+                remainingCredit -= fee.amount;
+              } else if (remainingCredit > 0) {
+                fee.isPaid = false;
+                fee.partialPaid = remainingCredit;
+                remainingCredit = 0;
+                break;
+              } else {
+                break;
+              }
+            }
+
+            // 4. Update ledger values in the database payload
+            updatedData.totalFee = newCourseFee.total_fee;
+            updatedData.feeBreakdown = newBreakdown;
+
+            toast.info(
+              `Course changed to ${editData.course}. Transferred paid fees (₹${totalPaidAmount}) to new ledger.`
+            );
+          }
+        }
+      }
+
+      await updateDoc(docRef, updatedData);
       toast.success("Enrollment updated");
       setEditId(null);
       fetchAdminData();
-    } catch {
+    } catch (error) {
+      console.error("Update failed:", error);
       toast.error("Update failed");
     }
   };
