@@ -397,6 +397,75 @@ const StudentExamPortal = ({ name, rollNumber }) => {
     };
   }, [activeExam, questions, answers]); //eslint-disable-line
 
+  // Security listener to disable copy-paste, text selection, inspect key shortcuts and right-click during exam
+  useEffect(() => {
+    if (!activeExam) return;
+
+    const preventDefault = (e) => e.preventDefault();
+
+    const handleKeyDown = (e) => {
+      // Disable Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+U, Ctrl+S, Ctrl+P, F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      const ctrlKey = e.ctrlKey || e.metaKey;
+      const shiftKey = e.shiftKey;
+      const key = e.key?.toLowerCase();
+
+      // F12
+      if (e.keyCode === 123 || e.key === "F12") {
+        e.preventDefault();
+        toast.error("Developer Tools are disabled during the exam!");
+        return false;
+      }
+
+      if (ctrlKey) {
+        // Ctrl+C, Ctrl+V, Ctrl+X
+        if (key === "c" || key === "v" || key === "x") {
+          e.preventDefault();
+          toast.error("Copying and pasting is disabled during the exam!");
+          return false;
+        }
+        // Ctrl+U
+        if (key === "u") {
+          e.preventDefault();
+          toast.error("View Source is disabled!");
+          return false;
+        }
+        // Ctrl+S
+        if (key === "s") {
+          e.preventDefault();
+          return false;
+        }
+        // Ctrl+P
+        if (key === "p") {
+          e.preventDefault();
+          toast.error("Printing is disabled!");
+          return false;
+        }
+        // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+        if (shiftKey && (key === "i" || key === "j" || key === "c")) {
+          e.preventDefault();
+          toast.error("Inspect tools are disabled!");
+          return false;
+        }
+      }
+    };
+
+    window.addEventListener("contextmenu", preventDefault);
+    window.addEventListener("copy", preventDefault);
+    window.addEventListener("cut", preventDefault);
+    window.addEventListener("paste", preventDefault);
+    window.addEventListener("selectstart", preventDefault);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("contextmenu", preventDefault);
+      window.removeEventListener("copy", preventDefault);
+      window.removeEventListener("cut", preventDefault);
+      window.removeEventListener("paste", preventDefault);
+      window.removeEventListener("selectstart", preventDefault);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeExam]);
+
   if (loading && !activeExam) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-blue-400">
@@ -423,7 +492,7 @@ const StudentExamPortal = ({ name, rollNumber }) => {
     const notAttemptedCount = questions.length - attemptedCount;
 
     return (
-      <div className="max-w-7xl mx-auto pb-20 space-y-6 animate-in fade-in duration-300">
+      <div className="max-w-7xl mx-auto pb-20 space-y-6 animate-in fade-in duration-300 select-none">
         {/* Floating Timer Widget */}
         <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[90] bg-gray-900/90 backdrop-blur-xl border border-yellow-500/30 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-5 hover:scale-105 transition-all select-none">
           <div className="relative flex h-3.5 w-3.5">
