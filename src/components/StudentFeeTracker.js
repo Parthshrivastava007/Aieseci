@@ -447,9 +447,8 @@ const InvoiceModal = ({
           </p>
         </div>
 
-        {/* BODY */}
         <div className="px-8 py-6 space-y-6 max-h-[65vh] overflow-y-auto hide-scrollbar">
-          {(lateFine > 0 || isLateFinePaid) && (
+          {(isLateFinePaid ? (isFineOnly || isEdit) : (lateFine > 0)) && (
             <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6">
               <div className="flex items-start justify-between gap-4 mb-5">
                 <div>
@@ -545,7 +544,7 @@ const InvoiceModal = ({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+            <div className={isFineOnly ? "md:col-span-2" : ""}>
               <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
                 Payment Date
               </label>
@@ -569,30 +568,32 @@ const InvoiceModal = ({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
-                Invoice No. {isCcc && <span className="text-xs text-blue-400 font-normal lowercase">(optional for ccc)</span>}
-              </label>
+            {!isFineOnly && (
+              <div>
+                <label className="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  Invoice No. {isCcc && <span className="text-xs text-blue-400 font-normal lowercase">(optional for ccc)</span>}
+                </label>
 
-              <input
-                type="text"
-                value={invoice}
-                onChange={(e) => setInvoice(e.target.value)}
-                placeholder="INV-001"
-                className="
-              w-full
-              bg-slate-900/70
-              border
-              border-slate-600
-              rounded-2xl
-              p-4
-              text-white
-              outline-none
-              focus:ring-2
-              focus:ring-blue-500/40
-            "
-              />
-            </div>
+                <input
+                  type="text"
+                  value={invoice}
+                  onChange={(e) => setInvoice(e.target.value)}
+                  placeholder="INV-001"
+                  className="
+                w-full
+                bg-slate-900/70
+                border
+                border-slate-600
+                rounded-2xl
+                p-4
+                text-white
+                outline-none
+                focus:ring-2
+                focus:ring-blue-500/40
+              "
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -2095,7 +2096,7 @@ const StudentFeeTracker = () => {
   ) => {
     const isCcc = currentStudent?.course?.toLowerCase() === "ccc";
     if (newIsPaid || isEdit || isFineOnly) {
-      if (!isCcc && (!invoiceNo || !invoiceNo.trim())) {
+      if (!isCcc && !isFineOnly && (!invoiceNo || !invoiceNo.trim())) {
         toast.error("Invoice number is required for a transaction.");
         return;
       }
@@ -2107,7 +2108,7 @@ const StudentFeeTracker = () => {
       const originalInvoice = originalFee ? originalFee.invoiceNo : null;
 
       // If the admin changed the invoice number or is providing a new one, check for uniqueness (only if not empty)
-      if (invoiceStr && originalInvoice !== invoiceStr) {
+      if (!isFineOnly && invoiceStr && originalInvoice !== invoiceStr) {
         try {
           const enrollmentsRef = collection(db, "enrollments");
           const snapshot = await getDocs(enrollmentsRef);
