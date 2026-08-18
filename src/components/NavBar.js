@@ -104,6 +104,8 @@ const Navbar = () => {
     ...(user?.role !== "student" ? [{ name: "Admissions", path: "/enrollementtable" }] : []),
     { name: "Ledger", path: "/feetracker" },
     { name: "Exams", path: "/exams" },
+    { name: "Typing", path: "/typing-test" },
+    // ...(user?.role !== "student" ? [{ name: "Analytics", path: "/analytics" }] : []),
     { name: "Contact", path: "/contact" },
   ];
 

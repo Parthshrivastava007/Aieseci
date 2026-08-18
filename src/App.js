@@ -10,7 +10,11 @@ import EnrollmentTable from "./pages/EnrollementTable";
 import StudentFeeTracker from "./components/StudentFeeTracker";
 import ExamDashboard from "./components/ExamDashboard";
 import Profile from "./pages/Profile";
+import Login from "./pages/Login";
+// import AdminAnalytics from "./pages/AdminAnalytics";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
+import TypingTest from "./pages/TypingTest";
 
 const App = () => {
   return (
@@ -20,12 +24,22 @@ const App = () => {
         <Toaster position="top-right" reverseOrder={false} />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/enroll" element={<CourseForm />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/enrollementtable" element={<EnrollmentTable />} />
           <Route path="/feetracker" element={<StudentFeeTracker />} />
           <Route path="/exams" element={<ExamDashboard />} />
+          <Route path="/typing-test" element={<TypingTest />} />
+          <Route 
+            path="/analytics" 
+            element={
+              <ProtectedRoute>
+                {/* <AdminAnalytics /> */}
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/contact" element={<Contact />} />
         </Routes>
       </Router>
