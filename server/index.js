@@ -3,6 +3,7 @@ const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const cors = require("cors");
 const fs = require("fs");
+const axios = require("axios");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -74,6 +75,20 @@ app.get("/", (req, res) => {
   res.send("Exam Backend is running!");
 });
 
+// Health check endpoints (for Render, UptimeRobot, cron-job.org)
+const handleHealthCheck = (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Aeiseci Backend is healthy and awake!",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development"
+  });
+};
+
+app.get("/health", handleHealthCheck);
+app.get("/api/health", handleHealthCheck);
+
 app.post("/api/parse-pdf", upload.single("pdf"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No file uploaded.");
@@ -101,4 +116,28 @@ app.post("/api/parse-pdf", upload.single("pdf"), async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Exam Backend listening at http://localhost:${port}`);
+
+  // Automated Keep-Alive pinger to prevent Render free-tier from shutting down / idling
+  const RENDER_EXTERNAL_URL =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.SERVER_URL ||
+    "https://aieseci.onrender.com";
+
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.ENABLE_KEEP_ALIVE === "true";
+
+  if (isProduction && RENDER_EXTERNAL_URL && !RENDER_EXTERNAL_URL.includes("localhost")) {
+    const PING_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes (Render sleeps at 15m)
+    console.log(`[Keep-Alive] Configured keep-alive pings every 14 minutes to: ${RENDER_EXTERNAL_URL}/health`);
+
+    setInterval(async () => {
+      try {
+        const pingRes = await axios.get(`${RENDER_EXTERNAL_URL}/health`, { timeout: 15000 });
+        console.log(`[Keep-Alive] Auto ping succeeded at ${new Date().toLocaleTimeString()} - Status: ${pingRes.status}`);
+      } catch (err) {
+        console.warn(`[Keep-Alive] Ping notification: ${err.message}`);
+      }
+    }, PING_INTERVAL_MS);
+  }
 });
