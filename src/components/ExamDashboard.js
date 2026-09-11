@@ -371,7 +371,7 @@ const ExamDashboard = () => {
       const allowedCourseNames = courseFees
         .map((c) => c.course_name)
         .filter(
-          (name) => name !== "O-Level" && name !== "CCC" && name !== "cccc",
+          (name) => name !== "CCC" && name !== "cccc",
         );
 
       // 1. Sync Courses
@@ -407,7 +407,14 @@ const ExamDashboard = () => {
     setQuestions([]);
     setLoading(true);
     try {
-      const sems = await getSemesters(course.id);
+      let sems = await getSemesters(course.id);
+      if (course.name === "O-Level" && sems.length === 0) {
+        const defaultSems = ["Semester 1", "Semester 2"];
+        for (const sName of defaultSems) {
+          await createSemester({ name: sName, courseId: course.id });
+        }
+        sems = await getSemesters(course.id);
+      }
       setSemesters(sems);
     } catch (error) {
       toast.error("Error loading semesters");
