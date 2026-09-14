@@ -158,7 +158,7 @@ export const getAssignment = async (assignmentId) => {
   return null;
 };
 
-export const submitExam = async (assignmentId, score, totalQuestions = null) => {
+export const submitExam = async (assignmentId, score, totalQuestions = null, savedAnswers = null) => {
   const ref = doc(db, COLLECTIONS.ASSIGNMENTS, assignmentId);
   const updateData = {
     status: "completed",
@@ -167,6 +167,9 @@ export const submitExam = async (assignmentId, score, totalQuestions = null) => 
   };
   if (totalQuestions !== null) {
     updateData.totalQuestions = totalQuestions;
+  }
+  if (savedAnswers !== null) {
+    updateData.savedAnswers = savedAnswers;
   }
   await updateDoc(ref, updateData);
 };

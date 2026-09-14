@@ -8,11 +8,12 @@ import {
   getAssignment,
 } from "../Backend/examService";
 import { toast } from "react-toastify";
-import { FiCheckCircle, FiPlayCircle, FiAward, FiLock } from "react-icons/fi";
+import { FiCheckCircle, FiPlayCircle, FiAward, FiLock, FiFileText } from "react-icons/fi";
 import LogoAiseci from "../assets/Images/LogoAiseci.png";
 import { db } from "../Backend/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import StudentExamMarksModal from "./StudentMarksModal";
+import StudentAnswerSheetModal from "./StudentAnswerSheetModal";
 
 const UnlockCountdown = ({ submittedAt, onUnlock }) => { //eslint-disable-line
   const [timeLeftStr, setTimeLeftStr] = useState("");
@@ -55,6 +56,7 @@ const StudentExamPortal = ({ name, rollNumber }) => {
   const [loading, setLoading] = useState(true);
   const [showMarksModal, setShowMarksModal] = useState(false);
   const [studentDoc, setStudentDoc] = useState(null);
+  const [selectedAnswerSheetExam, setSelectedAnswerSheetExam] = useState(null);
 
 
 
@@ -289,12 +291,21 @@ const StudentExamPortal = ({ name, rollNumber }) => {
     setLoading(true);
     try {
       const finalScore = calculateScore();
-      await submitExam(activeExam.id, finalScore, questions.length);
+      const finalAnswers = answersRef.current || answers;
+      await submitExam(activeExam.id, finalScore, questions.length, finalAnswers);
       toast.success(
-        "Exam submitted successfully! Marks will be available in your Marks Portal after 24 hours.",
+        "Exam submitted successfully! You can now check your answer sheet.",
       );
+      const submittedExamSnapshot = {
+        ...activeExam,
+        score: finalScore,
+        totalQuestions: questions.length,
+        savedAnswers: finalAnswers,
+        status: "completed",
+      };
       setActiveExam(null);
-      fetchAssignments(); // refresh list
+      await fetchAssignments(); // refresh list
+      setSelectedAnswerSheetExam(submittedExamSnapshot);
     } catch (error) {
       toast.error("Failed to submit exam.");
     } finally {
@@ -313,7 +324,8 @@ const StudentExamPortal = ({ name, rollNumber }) => {
     setLoading(true);
     try {
       const finalScore = calculateScore();
-      await submitExam(activeExam.id, finalScore, questions.length);
+      const finalAnswers = answersRef.current || answers;
+      await submitExam(activeExam.id, finalScore, questions.length, finalAnswers);
       toast.error("Exam automatically submitted! You were caught switching tabs or leaving the exam window 3 times.");
       setActiveExam(null);
       fetchAssignments();
@@ -888,32 +900,24 @@ const StudentExamPortal = ({ name, rollNumber }) => {
               </div>
 
               {assignment.status === "completed" ? (
-                <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-4 text-center flex flex-col items-center justify-center space-y-2">
-                  <span className="text-green-400 font-bold uppercase text-xs tracking-widest block">
-                    Exam Completed
-                  </span>
-                  
-                  {/* {isReleaseTimePassed(assignment.submittedAt) ? (
-                    <button
-                      onClick={handleOpenMarksModal}
-                      className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white border border-green-500 hover:scale-[1.02] font-bold rounded-xl text-sm transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                    >
-                      <FiAward /> View Marks
-                    </button>
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <button
-                        disabled
-                        className="mt-2 px-4 py-2 bg-gray-700 text-gray-500 font-bold rounded-xl text-sm cursor-not-allowed flex items-center gap-2 border border-gray-650"
-                      >
-                        <FiLock /> View Marks
-                      </button>
-                      <UnlockCountdown 
-                        submittedAt={assignment.submittedAt} 
-                        onUnlock={() => fetchAssignments()}
-                      />
-                    </div>
-                  )} */}
+                <div className="bg-gray-900/60 border border-gray-750 rounded-2xl p-4 text-center space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400 font-bold uppercase text-xs tracking-wider">
+                      Your Score
+                    </span>
+                    <span className="text-emerald-400 font-black text-lg">
+                      {assignment.score !== null && assignment.score !== undefined ? assignment.score : "—"}{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        / {assignment.totalQuestions || "—"}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAnswerSheetExam(assignment)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <FiFileText size={16} /> Check Answer Sheet
+                  </button>
                 </div>
               ) : (
                 <button
@@ -983,6 +987,14 @@ const StudentExamPortal = ({ name, rollNumber }) => {
         <StudentExamMarksModal
           student={studentDoc}
           onClose={() => setShowMarksModal(false)}
+        />
+      )}
+
+      {/* Read-Only Answer Sheet Modal */}
+      {selectedAnswerSheetExam && (
+        <StudentAnswerSheetModal
+          assignment={selectedAnswerSheetExam}
+          onClose={() => setSelectedAnswerSheetExam(null)}
         />
       )}
     </div>
