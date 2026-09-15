@@ -3,6 +3,9 @@ import { db } from "../Backend/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { FiFileText } from "react-icons/fi";
+import StudentAnswerSheetModal from "./StudentAnswerSheetModal";
+import { useAuth } from "../context/AuthContext";
 
 const UnlockCountdown = ({ submittedAt, onUnlock }) => {
   const [timeLeftStr, setTimeLeftStr] = useState("");
@@ -41,9 +44,11 @@ const UnlockCountdown = ({ submittedAt, onUnlock }) => {
 };
 
 const StudentExamMarksModal = ({ student, onClose }) => {
+  const { isAdmin } = useAuth();
   const marks = student?.marks;
   const [onlineExams, setOnlineExams] = useState([]);
   const [loadingExams, setLoadingExams] = useState(false);
+  const [selectedAnswerSheetExam, setSelectedAnswerSheetExam] = useState(null);
 
   useEffect(() => {
     if (student?.rollNo) {
@@ -92,14 +97,20 @@ const StudentExamMarksModal = ({ student, onClose }) => {
 
   const instituteName = "AIESECI";
   const instituteAddress = "Anpara, Auri More";
-  const isReleaseTimePassed = (submittedAt) => {
-    if (!submittedAt) return false;
-    const submissionTime = submittedAt.seconds ? submittedAt.seconds * 1000 : new Date(submittedAt).getTime();
+  const isReleaseTimePassed = (submittedAt, createdAt) => {
+    const timestamp = submittedAt || createdAt;
+    if (!timestamp) return true;
+    const submissionTime = timestamp.seconds
+      ? timestamp.seconds * 1000
+      : new Date(timestamp).getTime();
+    if (isNaN(submissionTime)) return true;
     const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
     return Date.now() >= releaseTime;
   };
 
-  const releasedOnlineExams = onlineExams.filter(exam => isReleaseTimePassed(exam.submittedAt));
+  const releasedOnlineExams = onlineExams.filter(
+    (exam) => isAdmin || isReleaseTimePassed(exam.submittedAt, exam.createdAt)
+  );
 
   // Calculate total statistics
   const totalOfflineMarks = marks ? Object.values(marks).reduce((acc, sem) => acc + sem.obtainedMarks, 0) : 0;
@@ -488,7 +499,7 @@ const StudentExamMarksModal = ({ student, onClose }) => {
                     const obtained = exam.score;
                     const percentage = total > 0 ? ((obtained / total) * 100).toFixed(2) : "0.00";
                     const isFail = total > 0 && percentage < 30;
-                    const released = isReleaseTimePassed(exam.submittedAt);
+                    const released = isAdmin || isReleaseTimePassed(exam.submittedAt, exam.createdAt);
 
                     return (
                       <div
@@ -548,16 +559,47 @@ const StudentExamMarksModal = ({ student, onClose }) => {
                                   ></div>
                                 </div>
                               </div>
+
+                              {/* View Answer Sheet Button */}
+                              <button
+                                onClick={() =>
+                                  setSelectedAnswerSheetExam({
+                                    ...exam,
+                                    studentName: student?.name || exam.studentName,
+                                    rollNo: student?.rollNo || exam.rollNo,
+                                  })
+                                }
+                                className="w-full mt-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95"
+                                title="Inspect student's question-by-question answer sheet"
+                              >
+                                <FiFileText size={14} /> View Student Answer Sheet
+                              </button>
                             </>
                           ) : (
                             <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-xl p-3 text-center mt-2">
                               <span className="text-xs text-yellow-500 font-bold uppercase tracking-wider block mb-1">
-                                Marks Unlock Countdown
+                                Marks & Answer Sheet Locked (24 Hours)
                               </span>
                               <UnlockCountdown 
                                 submittedAt={exam.submittedAt}
                                 onUnlock={() => fetchOnlineExams(student.rollNo)}
                               />
+                              {/* Admin preview of locked exam */}
+                              {isAdmin && (
+                                <button
+                                  onClick={() =>
+                                    setSelectedAnswerSheetExam({
+                                      ...exam,
+                                      studentName: student?.name || exam.studentName,
+                                      rollNo: student?.rollNo || exam.rollNo,
+                                    })
+                                  }
+                                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 font-bold underline flex items-center justify-center gap-1 mx-auto"
+                                  title="Admin override: View answer sheet before countdown ends"
+                                >
+                                  <FiFileText size={12} /> Admin View Answer Sheet
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -570,6 +612,14 @@ const StudentExamMarksModal = ({ student, onClose }) => {
           )}
         </div>
       </div>
+
+      {/* Answer Sheet Modal for Admin / Student */}
+      {selectedAnswerSheetExam && (
+        <StudentAnswerSheetModal
+          assignment={selectedAnswerSheetExam}
+          onClose={() => setSelectedAnswerSheetExam(null)}
+        />
+      )}
     </div>
   );
 };

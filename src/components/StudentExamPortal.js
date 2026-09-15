@@ -15,13 +15,26 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import StudentExamMarksModal from "./StudentMarksModal";
 import StudentAnswerSheetModal from "./StudentAnswerSheetModal";
 
-const UnlockCountdown = ({ submittedAt, onUnlock }) => { //eslint-disable-line
+const UnlockCountdown = ({ submittedAt, createdAt, onUnlock }) => {
   const [timeLeftStr, setTimeLeftStr] = useState("");
 
   useEffect(() => {
+    const timestamp = submittedAt || createdAt;
+    if (!timestamp) {
+      if (onUnlock) onUnlock();
+      return;
+    }
+
     const updateTime = () => {
-      if (!submittedAt) return;
-      const submissionTime = submittedAt.seconds ? submittedAt.seconds * 1000 : new Date(submittedAt).getTime();
+      const submissionTime = timestamp.seconds
+        ? timestamp.seconds * 1000
+        : new Date(timestamp).getTime();
+
+      if (isNaN(submissionTime)) {
+        if (onUnlock) onUnlock();
+        return;
+      }
+
       const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
       const remainingMs = releaseTime - Date.now();
 
@@ -40,13 +53,13 @@ const UnlockCountdown = ({ submittedAt, onUnlock }) => { //eslint-disable-line
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [submittedAt, onUnlock]);
+  }, [submittedAt, createdAt, onUnlock]);
 
   if (!timeLeftStr) return null;
 
   return (
-    <span className="text-xs text-yellow-500 font-semibold block mt-1">
-      Unlocks in {timeLeftStr}
+    <span className="text-xs text-yellow-400 font-mono font-bold inline-flex items-center gap-1.5">
+      ⏳ Unlocks in {timeLeftStr}
     </span>
   );
 };
@@ -58,11 +71,13 @@ const StudentExamPortal = ({ name, rollNumber }) => {
   const [studentDoc, setStudentDoc] = useState(null);
   const [selectedAnswerSheetExam, setSelectedAnswerSheetExam] = useState(null);
 
-
-
-  const isReleaseTimePassed = (submittedAt) => { //eslint-disable-line
-    if (!submittedAt) return false;
-    const submissionTime = submittedAt.seconds ? submittedAt.seconds * 1000 : new Date(submittedAt).getTime();
+  const isReleaseTimePassed = (submittedAt, createdAt) => {
+    const timestamp = submittedAt || createdAt;
+    if (!timestamp) return true;
+    const submissionTime = timestamp.seconds
+      ? timestamp.seconds * 1000
+      : new Date(timestamp).getTime();
+    if (isNaN(submissionTime)) return true;
     const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
     return Date.now() >= releaseTime;
   };
@@ -294,18 +309,11 @@ const StudentExamPortal = ({ name, rollNumber }) => {
       const finalAnswers = answersRef.current || answers;
       await submitExam(activeExam.id, finalScore, questions.length, finalAnswers);
       toast.success(
-        "Exam submitted successfully! You can now check your answer sheet.",
+        "Exam submitted successfully! As per policy, your marks and verified answer sheet will be unlocked after 24 hours.",
+        { autoClose: 7000 }
       );
-      const submittedExamSnapshot = {
-        ...activeExam,
-        score: finalScore,
-        totalQuestions: questions.length,
-        savedAnswers: finalAnswers,
-        status: "completed",
-      };
       setActiveExam(null);
       await fetchAssignments(); // refresh list
-      setSelectedAnswerSheetExam(submittedExamSnapshot);
     } catch (error) {
       toast.error("Failed to submit exam.");
     } finally {
@@ -326,7 +334,10 @@ const StudentExamPortal = ({ name, rollNumber }) => {
       const finalScore = calculateScore();
       const finalAnswers = answersRef.current || answers;
       await submitExam(activeExam.id, finalScore, questions.length, finalAnswers);
-      toast.error("Exam automatically submitted! You were caught switching tabs or leaving the exam window 3 times.");
+      toast.error(
+        "Exam automatically submitted! You were caught switching tabs or leaving the exam window 3 times. As per policy, your marks & answer sheet will unlock after 24 hours.",
+        { autoClose: 7000 }
+      );
       setActiveExam(null);
       fetchAssignments();
     } catch (error) {
@@ -884,14 +895,18 @@ const StudentExamPortal = ({ name, rollNumber }) => {
                   <span
                     className={`font-black text-sm ${
                       assignment.status === "completed"
-                        ? "text-green-400"
+                        ? isReleaseTimePassed(assignment.submittedAt, assignment.createdAt)
+                          ? "text-green-400"
+                          : "text-yellow-400"
                         : assignment.status === "in_progress"
                         ? "text-orange-400 animate-pulse"
                         : "text-yellow-400"
                     }`}
                   >
                     {assignment.status === "completed"
-                      ? "Finished"
+                      ? isReleaseTimePassed(assignment.submittedAt, assignment.createdAt)
+                        ? "Finished & Released"
+                        : "Submitted • In 24h Review"
                       : assignment.status === "in_progress"
                       ? "In Progress"
                       : "Pending"}
@@ -900,25 +915,59 @@ const StudentExamPortal = ({ name, rollNumber }) => {
               </div>
 
               {assignment.status === "completed" ? (
-                <div className="bg-gray-900/60 border border-gray-750 rounded-2xl p-4 text-center space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 font-bold uppercase text-xs tracking-wider">
-                      Your Score
-                    </span>
-                    <span className="text-emerald-400 font-black text-lg">
-                      {assignment.score !== null && assignment.score !== undefined ? assignment.score : "—"}{" "}
-                      <span className="text-xs text-gray-500 font-normal">
-                        / {assignment.totalQuestions || "—"}
+                isReleaseTimePassed(assignment.submittedAt, assignment.createdAt) ? (
+                  /* Released after 24 hours: Full Score & Answer Sheet Access */
+                  <div className="bg-gray-900/60 border border-gray-750 rounded-2xl p-4 text-center space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 font-bold uppercase text-xs tracking-wider">
+                        Your Score
                       </span>
-                    </span>
+                      <span className="text-emerald-400 font-black text-lg">
+                        {assignment.score !== null && assignment.score !== undefined ? assignment.score : "—"}{" "}
+                        <span className="text-xs text-gray-500 font-normal">
+                          / {assignment.totalQuestions || "—"}
+                        </span>
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedAnswerSheetExam(assignment)}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      <FiFileText size={16} /> Check Answer Sheet
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setSelectedAnswerSheetExam(assignment)}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    <FiFileText size={16} /> Check Answer Sheet
-                  </button>
-                </div>
+                ) : (
+                  /* Locked for 24 hours: Countdown Timer & Policy Explanation */
+                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 text-center space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 font-bold uppercase text-xs tracking-wider">
+                        Score & Answer Sheet
+                      </span>
+                      <span className="bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <FiLock size={10} /> 24h Lock
+                      </span>
+                    </div>
+
+                    <div className="py-1">
+                      <UnlockCountdown
+                        submittedAt={assignment.submittedAt}
+                        createdAt={assignment.createdAt}
+                        onUnlock={() => fetchAssignments()}
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      As per examination rules, marks and your verified response sheet unlock exactly 24 hours post-submission.
+                    </p>
+
+                    <button
+                      disabled
+                      className="w-full bg-gray-800/80 border border-gray-700 text-gray-500 font-bold py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-2 cursor-not-allowed select-none"
+                    >
+                      <FiLock size={14} /> Answer Sheet Locked
+                    </button>
+                  </div>
+                )
               ) : (
                 <button
                   onClick={() => startExam(assignment)}

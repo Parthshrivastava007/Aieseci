@@ -5,7 +5,6 @@ import {
   FiXCircle,
   FiAlertCircle,
   FiX,
-  FiPrinter,
   FiHelpCircle,
   FiCheck,
   FiLock,
@@ -16,8 +15,10 @@ import {
   FiArrowRight,
   FiAward,
 } from "react-icons/fi";
+import { useAuth } from "../context/AuthContext";
 
 const StudentAnswerSheetModal = ({ assignment, onClose }) => {
+  const { isAdmin } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -187,10 +188,6 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (!assignment) return null;
 
   const currentQ = questions[currentIndex];
@@ -199,6 +196,57 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
   const isCurrentCorrect =
     currentStudentAns && currentStudentAns.toUpperCase() === currentCorrectAns;
   const isCurrentUnattempted = !currentStudentAns;
+
+  const isReleaseTimePassed = (submittedAt, createdAt) => {
+    const timestamp = submittedAt || createdAt;
+    if (!timestamp) return true;
+    const submissionTime = timestamp.seconds
+      ? timestamp.seconds * 1000
+      : new Date(timestamp).getTime();
+    if (isNaN(submissionTime)) return true;
+    const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
+    return Date.now() >= releaseTime;
+  };
+
+  const isLockedForStudent =
+    !isAdmin && !isReleaseTimePassed(assignment?.submittedAt, assignment?.createdAt);
+
+  if (isLockedForStudent) {
+    const timestamp = assignment?.submittedAt || assignment?.createdAt;
+    const submissionTime = timestamp?.seconds
+      ? timestamp.seconds * 1000
+      : new Date(timestamp).getTime();
+    const releaseTime = submissionTime + 24 * 60 * 60 * 1000;
+    const remainingMs = Math.max(0, releaseTime - Date.now());
+    const hours = Math.floor(remainingMs / (3600 * 1000));
+    const minutes = Math.floor((remainingMs % (3600 * 1000)) / (60 * 1000));
+
+    return (
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in select-none">
+        <div className="absolute inset-0" onClick={onClose} />
+        <div className="relative w-full max-w-md bg-gray-900 border border-yellow-500/30 rounded-3xl p-8 text-center shadow-2xl z-10 text-white space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400 mx-auto">
+            <FiLock size={32} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-black text-white">Answer Sheet Locked</h3>
+            <span className="inline-block bg-yellow-500/15 text-yellow-400 font-mono text-xs px-3 py-1 rounded-full border border-yellow-500/30 font-bold">
+              ⏳ Unlocks in {hours}h {minutes}m
+            </span>
+            <p className="text-xs text-gray-400 leading-relaxed pt-2">
+              In accordance with examination rules, verified answer sheets and marks are strictly held for 24 hours following submission.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const currentFilteredPos = filteredIndices.indexOf(currentIndex);
   const isFirst = currentFilteredPos <= 0;
@@ -211,31 +259,8 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
 
       {/* Main Container */}
       <div className="relative w-full max-w-6xl h-[92vh] bg-gray-900 border border-gray-700/80 rounded-3xl shadow-2xl flex flex-col z-10 overflow-hidden text-white">
-        {/* Print Stylesheet */}
-        <style>{`
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            .answer-sheet-print-container, .answer-sheet-print-container * {
-              visibility: visible;
-            }
-            .answer-sheet-print-container {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              background: white !important;
-              color: black !important;
-            }
-            .no-print {
-              display: none !important;
-            }
-          }
-        `}</style>
-
         {/* ===================== TOP HEADER ===================== */}
-        <div className="px-5 py-3.5 sm:px-6 sm:py-4 bg-gray-900/95 border-b border-gray-800 flex flex-wrap items-center justify-between gap-3 shrink-0 no-print">
+        <div className="px-5 py-3.5 sm:px-6 sm:py-4 bg-gray-900/95 border-b border-gray-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
           {/* Exam & Student Info */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold shrink-0">
@@ -270,7 +295,7 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
             </div>
           </div>
 
-          {/* Controls: Mode Switch, Mobile Palette, Print, Close */}
+          {/* Controls: Mode Switch, Mobile Palette, Close */}
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
             <div className="bg-gray-800 p-1 rounded-xl border border-gray-700/80 flex items-center">
@@ -308,15 +333,6 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
               Palette
             </button>
 
-            {/* Print Button */}
-            <button
-              onClick={handlePrint}
-              className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl border border-gray-700 transition"
-              title="Print Answer Sheet"
-            >
-              <FiPrinter size={16} />
-            </button>
-
             {/* Close Button */}
             <button
               onClick={onClose}
@@ -329,7 +345,7 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
         </div>
 
         {/* ===================== BODY AREA (2 COLUMNS) ===================== */}
-        <div className="flex-1 flex overflow-hidden relative answer-sheet-print-container">
+        <div className="flex-1 flex overflow-hidden relative">
           {/* LEFT / MAIN PANEL: Question Content */}
           <div className="flex-1 flex flex-col overflow-y-auto bg-gray-950/40">
             {loading ? (
@@ -542,7 +558,7 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
                 </div>
 
                 {/* Bottom Prev / Next Navigation Bar */}
-                <div className="pt-6 mt-6 border-t border-gray-800 flex items-center justify-between gap-4 no-print">
+                <div className="pt-6 mt-6 border-t border-gray-800 flex items-center justify-between gap-4">
                   <button
                     onClick={handlePrev}
                     disabled={isFirst}
@@ -718,7 +734,7 @@ const StudentAnswerSheetModal = ({ assignment, onClose }) => {
 
           {/* ===================== RIGHT SIDEBAR: PALETTE & SCORE ===================== */}
           <div
-            className={`w-80 border-l border-gray-800 bg-gray-900/95 flex flex-col shrink-0 lg:static absolute inset-y-0 right-0 z-20 transition-transform duration-200 no-print ${
+            className={`w-80 border-l border-gray-800 bg-gray-900/95 flex flex-col shrink-0 lg:static absolute inset-y-0 right-0 z-20 transition-transform duration-200 ${
               showMobilePalette ? "translate-x-0 shadow-2xl" : "translate-x-full lg:translate-x-0"
             }`}
           >

@@ -127,15 +127,6 @@ const EnrollmentTableBody = ({
                         >
                           Delete
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedStudent(entry);
-                            setShowMarksModal(true);
-                          }}
-                          className="bg-green-600 px-2 py-1 rounded"
-                        >
-                          Upload Marks
-                        </button>
                       </>
                     )}
                   </td>

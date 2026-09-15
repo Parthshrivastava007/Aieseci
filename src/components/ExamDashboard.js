@@ -28,6 +28,7 @@ import {
 import { courseFees } from "./CourseFeesData";
 import { FaLock } from "react-icons/fa";
 import StudentExamPortal from "./StudentExamPortal";
+import StudentAnswerSheetModal from "./StudentAnswerSheetModal";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import {
@@ -156,6 +157,8 @@ const ExamDashboard = () => {
   const [assignments, setAssignments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilterCourse, setSelectedFilterCourse] = useState("");
+  const [selectedFilterStatus, setSelectedFilterStatus] = useState("");
+  const [selectedAnswerSheetAssignment, setSelectedAnswerSheetAssignment] = useState(null);
 
   // Form states
   const [newSemesterName, setNewSemesterName] = useState("");
@@ -1033,13 +1036,18 @@ const ExamDashboard = () => {
     const matchesSearch =
       queryStr === "" ||
       (asg.studentName || "").toLowerCase().includes(queryStr) ||
-      (asg.rollNo || "").toLowerCase().includes(queryStr);
+      (asg.rollNo || "").toLowerCase().includes(queryStr) ||
+      (asg.setTitle || "").toLowerCase().includes(queryStr);
 
     const matchesCourse =
       selectedFilterCourse === "" ||
       asg.courseName === selectedFilterCourse;
 
-    return matchesSearch && matchesCourse;
+    const matchesStatus =
+      selectedFilterStatus === "" ||
+      asg.status === selectedFilterStatus;
+
+    return matchesSearch && matchesCourse && matchesStatus;
   });
 
   return (
@@ -1484,9 +1492,19 @@ const ExamDashboard = () => {
                         setActiveTab("assignments");
                         fetchExamAssignments();
                       }}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === "assignments" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-gray-200"}`}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                        activeTab === "assignments"
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                          : "text-gray-400 hover:text-gray-200"
+                      }`}
                     >
-                      Assigned Exams
+                      <FiUsers size={15} />
+                      <span>Submissions & Answer Sheets</span>
+                      {assignments.filter((a) => a.status === "completed").length > 0 && (
+                        <span className="bg-emerald-500 text-gray-950 font-black text-[10px] px-2 py-0.5 rounded-full">
+                          {assignments.filter((a) => a.status === "completed").length} Done
+                        </span>
+                      )}
                     </button>
                   )}
                 </div>
@@ -1606,31 +1624,48 @@ const ExamDashboard = () => {
                   ) : activeTab === "assignments" ? (
                     <div className="bg-gray-800/50 p-6 rounded-3xl border border-gray-700 shadow-xl overflow-hidden">
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                        <h3 className="text-xl font-bold flex items-center gap-2">
-                          <FiUsers className="text-blue-400" /> Student Exam Assignments
-                        </h3>
+                        <div>
+                          <h3 className="text-xl font-bold flex items-center gap-2">
+                            <FiUsers className="text-blue-400" /> Student Submissions & Answer Sheets
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Review student examination submissions, performance scores, and inspect detailed answer sheets.
+                          </p>
+                        </div>
                         
                         {/* Search and Filters Controls */}
-                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto flex-wrap">
                           {/* Search bar */}
-                          <div className="flex items-center bg-gray-900 border border-gray-750 rounded-xl px-4 py-2 w-full sm:w-64 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                          <div className="flex items-center bg-gray-900 border border-gray-750 rounded-xl px-3 py-2 w-full sm:w-56 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
                             <svg className="w-4 h-4 text-gray-400 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                             <input
                               type="text"
-                              placeholder="Search student or roll..."
+                              placeholder="Search student, roll, or set..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               className="bg-transparent text-white outline-none w-full text-xs"
                             />
                           </div>
 
+                          {/* Status dropdown */}
+                          <select
+                            value={selectedFilterStatus}
+                            onChange={(e) => setSelectedFilterStatus(e.target.value)}
+                            className="bg-gray-900 border border-gray-750 text-white text-xs font-semibold rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer w-full sm:w-40"
+                          >
+                            <option value="">All Statuses</option>
+                            <option value="completed">Completed (Sheet Ready)</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="pending">Pending</option>
+                          </select>
+
                           {/* Course dropdown */}
                           <select
                             value={selectedFilterCourse}
                             onChange={(e) => setSelectedFilterCourse(e.target.value)}
-                            className="bg-gray-900 border border-gray-750 text-white text-xs font-semibold rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer w-full sm:w-44"
+                            className="bg-gray-900 border border-gray-750 text-white text-xs font-semibold rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer w-full sm:w-40"
                           >
                             <option value="">All Courses</option>
                             {courses.map((c) => (
@@ -1691,16 +1726,44 @@ const ExamDashboard = () => {
                                     </span>
                                   </td>
                                   <td className="py-4 pr-4 text-center font-bold text-lg text-white">
-                                    {asg.status === "completed" ? asg.score : "-"}
+                                    {asg.status === "completed" ? (
+                                      <button
+                                        onClick={() => setSelectedAnswerSheetAssignment(asg)}
+                                        className="text-emerald-400 hover:text-emerald-300 underline decoration-dashed font-black text-base cursor-pointer transition hover:scale-105 inline-flex items-center gap-1"
+                                        title="Click to view student answer sheet"
+                                      >
+                                        {asg.score !== null && asg.score !== undefined ? asg.score : "—"}
+                                        <span className="text-xs text-gray-500 font-normal">
+                                          / {asg.totalQuestions || "—"}
+                                        </span>
+                                      </button>
+                                    ) : (
+                                      <span className="text-gray-500 text-sm">—</span>
+                                    )}
                                   </td>
                                   <td className="py-4 text-right">
-                                    <button
-                                      onClick={() => handleDeassignExam(asg.id)}
-                                      className="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 ml-auto animate-in duration-250"
-                                      title="Deassign / Delete Exam Assignment"
-                                    >
-                                      <FiTrash2 /> Deassign
-                                    </button>
+                                    <div className="flex items-center justify-end gap-2 flex-wrap">
+                                      {asg.status === "completed" ? (
+                                        <button
+                                          onClick={() => setSelectedAnswerSheetAssignment(asg)}
+                                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                                          title="View Student Answer Sheet"
+                                        >
+                                          <FiFileText size={14} /> View Answer Sheet
+                                        </button>
+                                      ) : (
+                                        <span className="text-[11px] text-gray-500 italic pr-1">
+                                          Sheet locked (pending)
+                                        </span>
+                                      )}
+                                      <button
+                                        onClick={() => handleDeassignExam(asg.id)}
+                                        className="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 ml-auto"
+                                        title="Deassign / Delete Exam Assignment"
+                                      >
+                                        <FiTrash2 size={13} /> Deassign
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -2155,6 +2218,13 @@ const ExamDashboard = () => {
             </form>
           </div>
         </div>
+      )}
+      {/* Read-Only Answer Sheet Modal for Admin */}
+      {selectedAnswerSheetAssignment && (
+        <StudentAnswerSheetModal
+          assignment={selectedAnswerSheetAssignment}
+          onClose={() => setSelectedAnswerSheetAssignment(null)}
+        />
       )}
     </div>
   );
