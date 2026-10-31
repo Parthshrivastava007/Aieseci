@@ -1647,6 +1647,15 @@ const StudentFeeTracker = () => {
         return;
       }
 
+      // Sort students in descending order according to the pending amount (Total Due)
+      eligibleStudents.sort((a, b) => {
+        const diff = (b.totalDue || 0) - (a.totalDue || 0);
+        if (diff !== 0) return diff;
+        const pendingDiff = (b.pendingRegular || 0) - (a.pendingRegular || 0);
+        if (pendingDiff !== 0) return pendingDiff;
+        return (a.student.name || "").localeCompare(b.student.name || "");
+      });
+
       if (format === "pdf") {
         const doc = new jsPDF();
 

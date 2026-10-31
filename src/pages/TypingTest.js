@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion"; //eslint-disable-line
 import { useAuth } from "../context/AuthContext";
 import { db } from "../Backend/firebase";
@@ -391,10 +392,21 @@ const TypingTest = () => {
       </div>
 
       {/* Main Grid Wrapper */}
-      <div className="container mx-auto px-4 py-12 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 sm:py-12 max-w-6xl">
         
+        {/* Top Backlink to Games */}
+        <div className="mb-6 flex justify-between items-center">
+          <Link
+            to="/games"
+            className="inline-flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-yellow-400 transition bg-slate-900/80 hover:bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-800 shadow-sm"
+          >
+            <span>←</span>
+            <span>All Practice Games</span>
+          </Link>
+        </div>
+
         {/* Header Block */}
-        <div className="text-center space-y-4 mb-12">
+        <div className="text-center space-y-4 mb-10">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -417,6 +429,30 @@ const TypingTest = () => {
           <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
             Test your WPM (Words Per Minute) and accuracy skills under time limits. Play sound effects and compete on the global leaderboard!
           </p>
+        </div>
+
+        {/* SHORTCUT NINJA CROSS-PROMOTION BANNER */}
+        <div className="mb-8 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-yellow-500/15 border border-amber-500/30 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg backdrop-blur-md">
+          <div className="flex items-center gap-3.5 text-center sm:text-left">
+            <span className="text-3xl sm:text-4xl">🥷</span>
+            <div>
+              <div className="text-sm sm:text-base font-bold text-white flex items-center gap-2 justify-center sm:justify-start">
+                <span>Want to master Computer & Tally Shortcuts?</span>
+                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  NEW
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Practice Excel formulas, Tally vouchers & Windows hotkeys on the interactive mechanical keyboard!
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/shortcuts"
+            className="shrink-0 bg-yellow-400 hover:bg-yellow-350 text-slate-950 font-black text-xs sm:text-sm px-5 py-2.5 rounded-2xl transition-all shadow-md shadow-yellow-400/20 hover:scale-105 flex items-center gap-1.5"
+          >
+            Play Shortcut Ninja →
+          </Link>
         </div>
 
         {/* CONTROLS BAR */}

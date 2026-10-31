@@ -15,6 +15,8 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import TypingTest from "./pages/TypingTest";
+import ShortcutChallenge from "./pages/ShortcutChallenge";
+import Games from "./pages/Games";
 
 const App = () => {
   return (
@@ -31,7 +33,9 @@ const App = () => {
           <Route path="/enrollementtable" element={<EnrollmentTable />} />
           <Route path="/feetracker" element={<StudentFeeTracker />} />
           <Route path="/exams" element={<ExamDashboard />} />
+          <Route path="/games" element={<Games />} />
           <Route path="/typing-test" element={<TypingTest />} />
+          <Route path="/shortcuts" element={<ShortcutChallenge />} />
           <Route 
             path="/analytics" 
             element={

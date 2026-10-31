@@ -104,12 +104,20 @@ const Navbar = () => {
     ...(user?.role !== "student" ? [{ name: "Admissions", path: "/enrollementtable" }] : []),
     { name: "Ledger", path: "/feetracker" },
     { name: "Exams", path: "/exams" },
-    { name: "Typing", path: "/typing-test" },
+    { name: "Games", path: "/games" },
     // ...(user?.role !== "student" ? [{ name: "Analytics", path: "/analytics" }] : []),
     { name: "Contact", path: "/contact" },
   ];
 
   if (hideNavbar) return null;
+
+  const isItemActive = (itemPath) => {
+    if (location.pathname === itemPath) return true;
+    if (itemPath === "/games" && (location.pathname === "/typing-test" || location.pathname === "/shortcuts")) {
+      return true;
+    }
+    return false;
+  };
 
   return (
     <nav className="bg-gray-900 text-white shadow-xl sticky top-0 z-[100] border-b border-gray-800">
@@ -132,29 +140,35 @@ const Navbar = () => {
         {/* Desktop Menu & Action Button */}
         <div className="hidden md:flex items-center space-x-8">
           <ul className="flex space-x-8">
-            {menuItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`relative py-1 text-sm font-semibold tracking-wide transition-colors duration-300 group ${location.pathname === item.path
-                    ? "text-yellow-400"
-                    : "text-gray-300 hover:text-yellow-400"
+            {menuItems.map((item) => {
+              const active = isItemActive(item.path);
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`relative py-1 text-sm font-semibold tracking-wide transition-colors duration-300 group flex items-center gap-1 ${
+                      active ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
                     }`}
-                >
-                  <motion.span whileHover={{ y: -2 }} className="inline-block">
-                    {item.name}
-                  </motion.span>
+                  >
+                    <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-1">
+                      {item.name}
+                      {item.badge && (
+                        <span className="text-[9px] bg-gradient-to-r from-red-500 to-amber-500 text-white font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider shadow-sm animate-pulse">
+                          {item.badge}
+                        </span>
+                      )}
+                    </motion.span>
 
-                  {/* Animated Underline */}
-                  <span
-                    className={`absolute bottom-0 left-0 h-0.5 bg-yellow-400 transition-all duration-300 rounded-full ${location.pathname === item.path
-                      ? "w-full"
-                      : "w-0 group-hover:w-full"
+                    {/* Animated Underline */}
+                    <span
+                      className={`absolute bottom-0 left-0 h-0.5 bg-yellow-400 transition-all duration-300 rounded-full ${
+                        active ? "w-full" : "w-0 group-hover:w-full"
                       }`}
-                  />
-                </Link>
-              </li>
-            ))}
+                    />
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           {isAuthenticated ? (
@@ -234,16 +248,22 @@ const Navbar = () => {
                       <Link
                         to={item.path}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`text-xl font-bold transition-all duration-300 flex items-center group ${location.pathname === item.path
-                          ? "text-yellow-400"
-                          : "text-gray-100 hover:text-yellow-400"
-                          }`}
+                        className={`text-xl font-bold transition-all duration-300 flex items-center group ${
+                          isItemActive(item.path)
+                            ? "text-yellow-400"
+                            : "text-gray-100 hover:text-yellow-400"
+                        }`}
                       >
                         <motion.span
                           whileHover={{ x: 10 }}
-                          className="flex items-center"
+                          className="flex items-center gap-2"
                         >
                           {item.name}
+                          {item.badge && (
+                            <span className="text-[10px] bg-gradient-to-r from-red-500 to-amber-500 text-white font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                              {item.badge}
+                            </span>
+                          )}
                           <motion.span
                             initial={{ opacity: 0, x: -5 }}
                             whileHover={{ opacity: 1, x: 5 }}

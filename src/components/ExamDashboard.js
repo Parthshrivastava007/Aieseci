@@ -257,7 +257,7 @@ const ExamDashboard = () => {
         (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
           ? "http://localhost:5000"
           : "https://aieseci.onrender.com");
-      axios.get(`${backendUrl}/health`).catch(() => {});
+      axios.get(`${backendUrl}/health`).catch(() => { });
     }
   }, [authenticated, isAdmin]);
 
@@ -1081,11 +1081,10 @@ const ExamDashboard = () => {
                   <button
                     key={course.id}
                     onClick={() => handleCourseSelect(course)}
-                    className={`w-full text-left p-3 rounded-xl transition-all ${
-                      selectedCourse?.id === course.id
+                    className={`w-full text-left p-3 rounded-xl transition-all ${selectedCourse?.id === course.id
                         ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
                         : "hover:bg-gray-700/50 text-gray-400"
-                    }`}
+                      }`}
                   >
                     {course.name}
                   </button>
@@ -1130,11 +1129,10 @@ const ExamDashboard = () => {
                           <>
                             <button
                               onClick={() => handleSemesterSelect(semester)}
-                              className={`w-full text-left p-3 rounded-xl transition-all overflow-hidden text-ellipsis whitespace-nowrap ${
-                                selectedSemester?.id === semester.id
+                              className={`w-full text-left p-3 rounded-xl transition-all overflow-hidden text-ellipsis whitespace-nowrap ${selectedSemester?.id === semester.id
                                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
                                   : "hover:bg-gray-700/50 text-gray-400"
-                              }`}
+                                }`}
                             >
                               {semester.name}
                             </button>
@@ -1219,11 +1217,10 @@ const ExamDashboard = () => {
                           <>
                             <button
                               onClick={() => handleSetSelect(set)}
-                              className={`w-full text-left p-3 rounded-xl transition-all overflow-hidden text-ellipsis whitespace-nowrap ${
-                                selectedSet?.id === set.id
+                              className={`w-full text-left p-3 rounded-xl transition-all overflow-hidden text-ellipsis whitespace-nowrap ${selectedSet?.id === set.id
                                   ? "bg-pink-600 text-white shadow-lg shadow-pink-500/20"
                                   : "hover:bg-gray-700/50 text-gray-400"
-                              }`}
+                                }`}
                             >
                               {set.title}
                             </button>
@@ -1463,18 +1460,16 @@ const ExamDashboard = () => {
                   <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-gray-800/60 rounded-2xl border border-gray-700/80 w-max min-w-full sm:min-w-0 sm:w-fit">
                     <button
                       onClick={() => setActiveTab("questions")}
-                      className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap ${
-                        activeTab === "questions" ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-gray-200"
-                      }`}
+                      className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap ${activeTab === "questions" ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-gray-200"
+                        }`}
                     >
                       Questions List
                     </button>
                     {isAdmin && (
                       <button
                         onClick={() => setActiveTab("upload")}
-                        className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap ${
-                          activeTab === "upload" ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-gray-200"
-                        }`}
+                        className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap ${activeTab === "upload" ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-gray-200"
+                          }`}
                       >
                         Upload PDF
                       </button>
@@ -1485,9 +1480,8 @@ const ExamDashboard = () => {
                           setActiveTab("add-question");
                           resetManualQuestionForm();
                         }}
-                        className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap ${
-                          activeTab === "add-question" ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-gray-200"
-                        }`}
+                        className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap ${activeTab === "add-question" ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-gray-200"
+                          }`}
                       >
                         Add Question
                       </button>
@@ -1498,11 +1492,10 @@ const ExamDashboard = () => {
                           setActiveTab("assignments");
                           fetchExamAssignments();
                         }}
-                        className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 ${
-                          activeTab === "assignments"
+                        className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 ${activeTab === "assignments"
                             ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
                             : "text-gray-400 hover:text-gray-200"
-                        }`}
+                          }`}
                       >
                         <FiUsers size={15} className="shrink-0" />
                         <span>Submissions & Answer Sheets</span>
@@ -1584,11 +1577,10 @@ const ExamDashboard = () => {
                                 ([key, val]) => (
                                   <div
                                     key={key}
-                                    className={`p-3 rounded-xl border ${
-                                      q.correctAnswer === key
+                                    className={`p-3 rounded-xl border ${q.correctAnswer === key
                                         ? "bg-green-500/10 border-green-500/50 text-green-200"
                                         : "bg-gray-900/50 border-gray-700 text-gray-400"
-                                    }`}
+                                      }`}
                                   >
                                     <span className="font-black mr-2">
                                       {key}.
@@ -1639,7 +1631,7 @@ const ExamDashboard = () => {
                             Review student examination submissions, performance scores, and inspect detailed answer sheets.
                           </p>
                         </div>
-                        
+
                         {/* Search and Filters Controls */}
                         <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto flex-wrap">
                           {/* Search bar */}
@@ -1718,18 +1710,17 @@ const ExamDashboard = () => {
                                   </td>
                                   <td className="py-3.5 pr-4 text-center font-medium whitespace-nowrap">{asg.duration || 90} Min</td>
                                   <td className="py-3.5 pr-4 text-center whitespace-nowrap">
-                                    <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
-                                      asg.status === "completed"
+                                    <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${asg.status === "completed"
                                         ? "bg-green-500/10 text-green-400 border border-green-500/25"
                                         : asg.status === "in_progress"
-                                        ? "bg-orange-500/10 text-orange-400 border border-orange-500/25 animate-pulse"
-                                        : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/25"
-                                    }`}>
+                                          ? "bg-orange-500/10 text-orange-400 border border-orange-500/25 animate-pulse"
+                                          : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/25"
+                                      }`}>
                                       {asg.status === "completed"
                                         ? "Completed"
                                         : asg.status === "in_progress"
-                                        ? "In Progress"
-                                        : "Pending"}
+                                          ? "In Progress"
+                                          : "Pending"}
                                     </span>
                                   </td>
                                   <td className="py-3.5 pr-4 text-center font-bold text-base sm:text-lg text-white whitespace-nowrap">
@@ -1823,7 +1814,7 @@ const ExamDashboard = () => {
                         {/* Options */}
                         <div className="space-y-4">
                           <h4 className="text-md font-bold text-gray-300 border-b border-gray-750 pb-2">Options</h4>
-                          
+
                           {/* Option A */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
@@ -1959,7 +1950,7 @@ const ExamDashboard = () => {
                               <option value="D">Option D</option>
                             </select>
                           </div>
-                          
+
                           <div className="flex gap-4">
                             <button
                               type="button"
